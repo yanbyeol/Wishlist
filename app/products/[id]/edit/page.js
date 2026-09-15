@@ -12,7 +12,7 @@ export default async function EditProductPage({ params }) {
   const user = await requireUser(`/products/${id}/edit`);
   const product = await getProductById(id);
 
-  if (!product || product.sellerId !== user.id) {
+  if (!product || product.status === "archived" || product.sellerId !== user.id) {
     notFound();
   }
 

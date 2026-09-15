@@ -1,12 +1,12 @@
 /**
  * WishMate 개발용 시드 (docs/README.md 기준).
- * 실행: node script/seed.js / 검사만: node script/seed.js --dry-run
+ * 실행: node scripts/seeds.js / 검사만: node scripts/seeds.js --dry-run
  * 프로젝트 루트 .env.local 등에 MONGODB_URI, MONGODB_DB 설정.
  * 로그인: minji@example.com 등 / SEED_PASSWORD (기본: WishMate-demo-2026!)
- * 금액은 원(KRW), 참조 ID는 ObjectId. 인증 컬렉션은 Better Auth 기본 이름.
+ * 금액은 원(KRW), 앱 데이터의 참조 ID는 문자열. 인증 컬렉션은 Better Auth 기본 이름.
  * 기존 문서는 수정/삭제하지 않고 고정 ID로 없는 데이터만 추가한다.
  * 결제·AI 카드·배송은 모두 목업이며 외부 서비스 호출은 하지 않는다.
- * 상품/주문 컬렉션은 아직 앱 스키마가 없어 이 파일에서 정의한 초기 모델이다.
+ * 상품/주문 컬렉션은 현재 lib 모듈에서 사용하는 스키마와 동일하게 유지한다.
  */
 const { resolve } = require("node:path");
 const assert = require("node:assert/strict");
@@ -45,33 +45,38 @@ async function createSeed() {
     [37, 1, 21, "휴대용 블루투스 스피커", 120000, 8, "책상 위와 나들이에서 사용하는 소형 스피커. USB-C 충전 지원."],
     [38, 1, 22, "포근한 니트 블랭킷", 68000, 0, "소파 위에서 덮기 좋은 100×150cm 담요. 현재 품절된 상품 예시."],
   ].map(([number, seller, category, name, price, quantity, description]) => document(number, {
-    sellerId: id(seller), categoryId: id(category), name, price, currency: "KRW", quantity, description,
-    images: [`https://placehold.co/800x800/png?text=WishMate+${number}`],
+    sellerId: id(seller).toHexString(),
+    category: categories.find((entry) => entry._id.equals(id(category))).name,
+    name, price, currency: "KRW", quantity, description,
+    imageUrl: `https://placehold.co/800x800/png?text=WishMate+${number}`,
     status: quantity ? "active" : "sold_out",
   }));
   const addresses = user.slice(0, 2).map((member, index) => document(41 + index, {
-    userId: member._id, label: "집 (테스트)", recipientName: member.name,
+    userId: member._id.toHexString(), label: "집 (테스트)", recipientName: member.name,
     phone: "010-0000-0000", postalCode: "00000", address1: "테스트시 선물로 123",
     address2: `${index + 1}동 101호 (가상 주소)`, isDefault: true,
   }));
   const wishlists = user.map((member, index) => document(51 + index, {
-    userId: member._id, title: `${member.name}의 위시리스트`,
+    userId: member._id.toHexString(), title: `${member.name}의 위시리스트`,
     shareToken: `wishmate-demo-${index + 1}`, visibility: "public",
   }));
   // 도윤의 위시리스트는 빈 상태 UI 확인용.
   const wishlistItems = [[61, 51, 31], [62, 51, 32], [63, 51, 37], [64, 52, 36], [65, 53, 34]]
-    .map(([number, wishlist, product]) => document(number, { wishlistId: id(wishlist), productId: id(product) }));
+    .map(([number, wishlist, product]) => document(number, {
+      wishlistId: id(wishlist).toHexString(),
+      productId: id(product).toHexString(),
+    }));
   const groupGifts = [
-    document(71, { organizerId: id(2), recipientId: id(1), productId: id(31), wishlistId: id(51),
+    document(71, { organizerId: id(2).toHexString(), recipientId: id(1).toHexString(), productId: id(31).toHexString(), wishlistId: id(51).toHexString(),
       title: "민지의 생일 헤드폰", targetAmount: 240000, currentAmount: 90000,
       status: "funding", expiresAt: new Date("2099-12-31T00:00:00Z"), orderId: null }),
-    document(72, { organizerId: id(2), recipientId: id(1), productId: id(37), wishlistId: id(51),
+    document(72, { organizerId: id(2).toHexString(), recipientId: id(1).toHexString(), productId: id(37).toHexString(), wishlistId: id(51).toHexString(),
       title: "민지의 새 출발을 응원해", targetAmount: 120000, currentAmount: 120000,
-      status: "completed", expiresAt: new Date("2026-09-20T00:00:00Z"), orderId: id(93) }),
+      status: "completed", expiresAt: new Date("2026-09-20T00:00:00Z"), orderId: id(93).toHexString() }),
   ];
   const contributions = [[81, 71, 2, 50000], [82, 71, 3, 40000], [83, 72, 2, 70000], [84, 72, 4, 50000]]
     .map(([number, group, sender, amount]) => document(number, {
-      groupGiftId: id(group), userId: id(sender), amount, message: "새로운 하루도 행복하게 보내!",
+      groupGiftId: id(group).toHexString(), userId: id(sender).toHexString(), amount, message: "새로운 하루도 행복하게 보내!",
       paymentStatus: "paid", paymentProvider: "mock", paymentId: `mock-contribution-${number}`,
     }));
   const orders = [
@@ -81,19 +86,28 @@ async function createSeed() {
   ].map(([number, type, sender, recipient, product, group, address, status]) => {
     const item = products.find((entry) => entry._id.equals(id(product)));
     return document(number, {
-      type, senderId: id(sender), recipientId: id(recipient), sellerId: item.sellerId,
-      productId: item._id, productSnapshot: { name: item.name, price: item.price, image: item.images[0] },
-      quantity: 1, totalAmount: item.price, currency: "KRW", groupGiftId: group ? id(group) : null,
+      type, senderId: id(sender).toHexString(), recipientId: id(recipient).toHexString(), sellerId: item.sellerId,
+      productId: item._id.toHexString(), productSnapshot: { name: item.name, price: item.price, imageUrl: item.imageUrl },
+      quantity: 1, totalAmount: item.price, currency: "KRW", groupGiftId: group ? id(group).toHexString() : null,
       message: "소중한 너에게, 행복한 하루를 선물해!", status,
       paymentStatus: "paid", paymentProvider: "mock",
       paymentId: type === "group" ? null : `mock-order-${number}`,
-      shippingAddress: address ? { ...addresses.find((entry) => entry._id.equals(id(address))) } : null,
+      shippingAddress: address ? (() => {
+        const savedAddress = addresses.find((entry) => entry._id.equals(id(address)));
+        return {
+          recipientName: savedAddress.recipientName,
+          phone: savedAddress.phone,
+          postalCode: savedAddress.postalCode,
+          address1: savedAddress.address1,
+          address2: savedAddress.address2,
+        };
+      })() : null,
       delivery: { provider: "mock", trackingNumber: address ? `MOCK-${number}` : null,
         shippedAt: address ? now : null, deliveredAt: status === "delivered" ? now : null },
     });
   });
   const giftCards = orders.map((order, index) => document(101 + index, {
-    orderId: order._id, recipientId: order.recipientId, title: "너의 모든 날을 응원해",
+    orderId: order._id.toHexString(), recipientId: order.recipientId, title: "너의 모든 날을 응원해",
     message: order.type === "group" ? "함께 마음을 모았어. 새로운 시작에 즐거운 음악이 가득하길!" : order.message,
     generationProvider: "mock", status: "generated",
     // 실제 서비스에서는 안전한 임의 토큰과 수신자 인증, 만료 검증이 필요하다.
@@ -105,9 +119,11 @@ async function createSeed() {
 }
 
 function validate(data) {
-  const exists = (collection, value) => data[collection].some((entry) => entry._id.equals(value));
+  const exists = (collection, value) => data[collection].some(
+    (entry) => entry._id.toHexString() === String(value),
+  );
   const references = {
-    account: { userId: "user" }, products: { sellerId: "user", categoryId: "categories" },
+    account: { userId: "user" }, products: { sellerId: "user" },
     addresses: { userId: "user" }, wishlists: { userId: "user" },
     wishlistItems: { wishlistId: "wishlists", productId: "products" },
     groupGifts: { organizerId: "user", recipientId: "user", productId: "products", wishlistId: "wishlists", orderId: "orders" },
@@ -123,7 +139,7 @@ function validate(data) {
     }
   }
   for (const group of data.groupGifts) {
-    const total = data.contributions.filter((entry) => entry.groupGiftId.equals(group._id) && entry.paymentStatus === "paid")
+    const total = data.contributions.filter((entry) => entry.groupGiftId === group._id.toHexString() && entry.paymentStatus === "paid")
       .reduce((sum, entry) => sum + entry.amount, 0);
     assert.equal(total, group.currentAmount);
     assert(total <= group.targetAmount);

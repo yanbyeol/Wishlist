@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
-export default function ShareButton({ path, title }) {
+export default function ShareButton({
+  path,
+  title,
+  label = "위시리스트 공유하기",
+  text = `${title}를 확인해 보세요.`,
+}) {
   const [message, setMessage] = useState("");
 
   async function shareWishlist() {
@@ -10,7 +15,7 @@ export default function ShareButton({ path, title }) {
 
     try {
       if (navigator.share) {
-        await navigator.share({ title, text: `${title}를 확인해 보세요.`, url });
+        await navigator.share({ title, text, url });
         setMessage("공유 창을 열었어요.");
         return;
       }
@@ -27,7 +32,7 @@ export default function ShareButton({ path, title }) {
   return (
     <div className="share-control">
       <button className="button button-primary" type="button" onClick={shareWishlist}>
-        위시리스트 공유하기
+        {label}
       </button>
       <p className="form-message" aria-live="polite">{message}</p>
     </div>
