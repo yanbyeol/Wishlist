@@ -10,7 +10,7 @@ import { findUserById } from "@/lib/users";
 import { formatWon, sanitizeCallbackPath } from "@/lib/utils/format";
 import { isProductInWishlist } from "@/lib/wishlists";
 
-export const metadata = { title: "같이 선물하기" };
+export const metadata = { title: "함께 선물하기" };
 
 export default async function NewGroupGiftPage({ searchParams }) {
   await connection();
@@ -45,8 +45,8 @@ export default async function NewGroupGiftPage({ searchParams }) {
     <section className="container page-section checkout-grid">
       <div>
         <div className="page-heading">
-          <p className="eyebrow">마음을 함께 모아요</p>
-          <h1>같이 선물하기</h1>
+          <p className="eyebrow">친구들과 함께 준비해요</p>
+          <h1>함께 선물하기</h1>
           <p>링크를 공유하고 친구들과 목표 금액을 함께 채워 보세요.</p>
         </div>
         <CreateGroupGiftForm product={product} recipient={recipient} from={from} />

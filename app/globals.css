@@ -490,6 +490,10 @@ img {
   font-size: 12px;
 }
 
+.product-card-participation { margin-top: 14px; }
+.product-card-participation .share-control { width: 100%; min-width: 0; }
+.product-card-participation .button { width: 100%; }
+
 .heart-button {
   position: absolute;
   z-index: 3;
@@ -797,6 +801,25 @@ img {
 .shared-list-intro { max-width: 650px; margin: 0 auto 42px; }
 .share-control { min-width: max-content; text-align: center; }
 .share-control .form-message { margin-top: 5px; }
+.detail-actions > .share-control,
+.detail-actions > .share-control .button { width: 100%; }
+
+.guest-otp-section { display: flex; flex-direction: column; gap: 22px; }
+.guest-otp-section > div > p { margin-top: 4px; color: var(--muted); }
+
+.otp-verification-form {
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.verified-participant {
+  padding: 10px 12px;
+  color: var(--success) !important;
+  border-radius: 10px;
+  background: #eff8f1;
+  font-size: 13px;
+  font-weight: 800;
+}
 
 .dashboard-grid {
   display: grid;

@@ -9,6 +9,7 @@ import {
 import {
   isValidEmail,
   isValidImageUrl,
+  isValidOtpCode,
   parseNonNegativeInteger,
   parsePositiveInteger,
 } from "../lib/utils/validation.js";
@@ -45,4 +46,10 @@ test("이메일과 이미지 주소 형식을 검증한다", () => {
   assert.equal(isValidImageUrl("https://example.com/gift.jpg"), true);
   assert.equal(isValidImageUrl("/images/gift.jpg"), true);
   assert.equal(isValidImageUrl("javascript:alert(1)"), false);
+});
+
+test("이메일 간편 인증은 숫자 6자리만 허용한다", () => {
+  assert.equal(isValidOtpCode("012345"), true);
+  assert.equal(isValidOtpCode("12345"), false);
+  assert.equal(isValidOtpCode("12345a"), false);
 });

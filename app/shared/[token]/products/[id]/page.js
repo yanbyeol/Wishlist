@@ -2,12 +2,12 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import ProductImage from "@/components/product-image";
-import WishlistButton from "@/components/wishlist-button";
+import ShareButton from "@/components/share-button";
 import { GiftIcon, SparkleIcon } from "@/components/icons";
 import { findOpenGroupGiftForProduct } from "@/lib/group-gifts";
 import { getCurrentUser } from "@/lib/session";
 import { formatWon } from "@/lib/utils/format";
-import { getSharedWishlist, getWishlistedProductIds } from "@/lib/wishlists";
+import { getSharedWishlist } from "@/lib/wishlists";
 
 export default async function SharedProductPage({ params }) {
   await connection();
@@ -21,10 +21,7 @@ export default async function SharedProductPage({ params }) {
 
   const product = item.product;
   const user = await getCurrentUser();
-  const [wishlistedIds, openGroupGift] = await Promise.all([
-    user ? getWishlistedProductIds(user.id) : [],
-    findOpenGroupGiftForProduct(wishlist.userId, product.id),
-  ]);
+  const openGroupGift = await findOpenGroupGiftForProduct(wishlist.userId, product.id);
   const isOwner = user?.id === wishlist.userId;
   const soldOut = product.quantity === 0 || product.status === "sold_out";
   const returnPath = `/shared/${token}/products/${product.id}`;
@@ -37,7 +34,7 @@ export default async function SharedProductPage({ params }) {
   const authenticatedOrderPath = user
     ? orderPath
     : `/login?callback=${encodeURIComponent(orderPath)}`;
-  const authenticatedGroupPath = user
+  const authenticatedGroupPath = openGroupGift || user
     ? groupGiftPath
     : `/login?callback=${encodeURIComponent(groupGiftPath)}`;
 
@@ -71,18 +68,23 @@ export default async function SharedProductPage({ params }) {
                   <GiftIcon size={20} /> {isOwner ? "나에게 선물하기" : "혼자 선물하기"}
                 </Link>
                 {!isOwner && (
-                  <Link href={authenticatedGroupPath} className="button button-dark">
-                    {openGroupGift ? "진행 중인 같이 선물 참여하기" : "같이 선물하기"}
-                  </Link>
+                  <>
+                    <Link href={authenticatedGroupPath} className="button button-dark">
+                      {openGroupGift ? "함께 선물하기 참여" : "함께 선물하기"}
+                    </Link>
+                    {openGroupGift && (
+                      <ShareButton
+                        path={`/group-gifts/${openGroupGift.id}`}
+                        title={openGroupGift.title}
+                        label="참여 링크 복사"
+                        copyOnly
+                        buttonClassName="button button-ghost"
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}
-            <WishlistButton
-              productId={product.id}
-              isWishlisted={wishlistedIds.includes(product.id)}
-              user={user}
-              returnPath={returnPath}
-            />
           </div>
         </div>
       </div>

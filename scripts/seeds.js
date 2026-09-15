@@ -4,7 +4,7 @@
  * 프로젝트 루트 .env.local 등에 MONGODB_URI, MONGODB_DB 설정.
  * 로그인: minji@example.com 등 / SEED_PASSWORD (기본: WishMate-demo-2026!)
  * 금액은 원(KRW), 앱 데이터의 참조 ID는 문자열. 인증 컬렉션은 Better Auth 기본 이름.
- * 기존 문서는 수정/삭제하지 않고 고정 ID로 없는 데이터만 추가한다.
+ * 고정 ID로 없는 데이터만 추가하며, 데모 상품·주문의 이미지 경로만 최신 자산으로 맞춘다.
  * 결제·AI 카드·배송은 모두 목업이며 외부 서비스 호출은 하지 않는다.
  * 상품/주문 컬렉션은 현재 lib 모듈에서 사용하는 스키마와 동일하게 유지한다.
  */
@@ -36,19 +36,19 @@ async function createSeed() {
   const categories = ["디지털", "리빙", "패션", "뷰티", "식품", "취미"].map((name, index) =>
     document(21 + index, { name, sortOrder: index }));
   const products = [
-    [31, 2, 21, "무선 노이즈 캔슬링 헤드폰", 240000, 12, "음악에 집중하는 시간을 위한 무선 헤드폰. 충전 케이블과 보관 케이스 포함."],
-    [32, 3, 22, "세라믹 머그 2종 세트", 32000, 25, "따뜻한 커피를 함께 즐기는 350ml 머그 세트. 크림과 그린 색상."],
-    [33, 4, 23, "데일리 캔버스 토트백", 45000, 18, "책과 노트북을 넉넉하게 담는 면 소재 가방. 내부 수납 포켓 포함."],
-    [34, 2, 24, "핸드크림 선물 세트", 28000, 40, "서로 다른 향의 30ml 핸드크림 3종. 선물 포장 포함."],
-    [35, 3, 25, "드립백 커피 컬렉션", 18000, 30, "세 가지 원두를 담은 드립백 12개입. 간편하게 즐기는 커피 선물."],
-    [36, 4, 26, "입문용 수채화 키트", 56000, 9, "24색 물감, 붓, 전용 스케치북으로 시작하는 나만의 취미."],
-    [37, 1, 21, "휴대용 블루투스 스피커", 120000, 8, "책상 위와 나들이에서 사용하는 소형 스피커. USB-C 충전 지원."],
-    [38, 1, 22, "포근한 니트 블랭킷", 68000, 0, "소파 위에서 덮기 좋은 100×150cm 담요. 현재 품절된 상품 예시."],
-  ].map(([number, seller, category, name, price, quantity, description]) => document(number, {
+    [31, 2, 21, "무선 노이즈 캔슬링 헤드폰", 240000, 12, "음악에 집중하는 시간을 위한 무선 헤드폰. 충전 케이블과 보관 케이스 포함.", "headphones.jpg"],
+    [32, 3, 22, "세라믹 머그 2종 세트", 32000, 25, "따뜻한 커피를 함께 즐기는 350ml 머그 세트. 크림과 그린 색상.", "ceramic-mugs.jpg"],
+    [33, 4, 23, "데일리 캔버스 토트백", 45000, 18, "책과 노트북을 넉넉하게 담는 면 소재 가방. 내부 수납 포켓 포함.", "canvas-tote.jpg"],
+    [34, 2, 24, "핸드크림 선물 세트", 28000, 40, "서로 다른 향의 30ml 핸드크림 3종. 선물 포장 포함.", "hand-cream-set.jpg"],
+    [35, 3, 25, "드립백 커피 컬렉션", 18000, 30, "세 가지 원두를 담은 드립백 12개입. 간편하게 즐기는 커피 선물.", "drip-coffee.jpg"],
+    [36, 4, 26, "입문용 수채화 키트", 56000, 9, "24색 물감, 붓, 전용 스케치북으로 시작하는 나만의 취미.", "watercolor-kit.jpg"],
+    [37, 1, 21, "휴대용 블루투스 스피커", 120000, 8, "책상 위와 나들이에서 사용하는 소형 스피커. USB-C 충전 지원.", "bluetooth-speaker.jpg"],
+    [38, 1, 22, "포근한 니트 블랭킷", 68000, 0, "소파 위에서 덮기 좋은 100×150cm 담요. 현재 품절된 상품 예시.", "knit-blanket.jpg"],
+  ].map(([number, seller, category, name, price, quantity, description, imageFile]) => document(number, {
     sellerId: id(seller).toHexString(),
     category: categories.find((entry) => entry._id.equals(id(category))).name,
     name, price, currency: "KRW", quantity, description,
-    imageUrl: `https://placehold.co/800x800/png?text=WishMate+${number}`,
+    imageUrl: `/images/products/${imageFile}`,
     status: quantity ? "active" : "sold_out",
   }));
   const addresses = user.slice(0, 2).map((member, index) => document(41 + index, {
@@ -81,7 +81,9 @@ async function createSeed() {
     [83, 72, 2, "준호", 70000],
     [84, 72, 4, "도윤", 50000],
   ].map(([number, group, sender, nickname, amount]) => document(number, {
-      groupGiftId: id(group).toHexString(), userId: id(sender).toHexString(), nickname, amount, message: "새로운 하루도 행복하게 보내!",
+      groupGiftId: id(group).toHexString(), participantType: "member",
+      userId: id(sender).toHexString(), guestEmail: null,
+      nickname, amount, message: "새로운 하루도 행복하게 보내!",
       paymentStatus: "paid", paymentProvider: "mock", paymentId: `mock-contribution-${number}`,
     }));
   const orders = [
@@ -113,7 +115,7 @@ async function createSeed() {
   });
   const giftCards = orders.map((order, index) => document(101 + index, {
     orderId: order._id.toHexString(), recipientId: order.recipientId, title: "너의 모든 날을 응원해",
-    message: order.type === "group" ? "함께 마음을 모았어. 새로운 시작에 즐거운 음악이 가득하길!" : order.message,
+    message: order.type === "group" ? "함께 준비했어. 새로운 시작에 즐거운 음악이 가득하길!" : order.message,
     generationProvider: "mock", status: "generated",
     // 실제 서비스에서는 안전한 임의 토큰과 수신자 인증, 만료 검증이 필요하다.
     acceptanceToken: `wishmate-demo-gift-${index + 1}`,
@@ -183,6 +185,23 @@ async function main() {
       })));
       console.log(`${name}: ${result.upsertedCount}개 추가, ${result.matchedCount}개 기존 문서 유지`);
     }
+    const productImageResult = await db.collection("products").bulkWrite(
+      data.products.map((product) => ({
+        updateOne: {
+          filter: { _id: product._id },
+          update: { $set: { imageUrl: product.imageUrl, updatedAt: new Date() } },
+        },
+      })),
+    );
+    const orderImageResult = await db.collection("orders").bulkWrite(
+      data.orders.map((order) => ({
+        updateOne: {
+          filter: { _id: order._id },
+          update: { $set: { "productSnapshot.imageUrl": order.productSnapshot.imageUrl, updatedAt: new Date() } },
+        },
+      })),
+    );
+    console.log(`데모 이미지: 상품 ${productImageResult.matchedCount}개, 주문 ${orderImageResult.matchedCount}개 경로 확인`);
     console.log("WishMate 시드 생성 완료. 테스트 로그인: minji@example.com (비밀번호는 파일 상단 참고)");
   } finally {
     await client.close();

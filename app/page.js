@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import ProductSearchForm from "@/app/product-search-form";
 import ProductCard from "@/components/product-card";
 import { ArrowIcon, GiftIcon, SparkleIcon } from "@/components/icons";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
@@ -47,12 +48,12 @@ export default async function Home({ searchParams }) {
 
       <section className="category-strip" aria-label="상품 카테고리">
         <div className="container category-list">
-          <Link href={keyword ? `/?q=${encodeURIComponent(keyword)}` : "/"} className={!category ? "active" : ""}>전체</Link>
+          <Link href={keyword ? `/?q=${encodeURIComponent(keyword)}` : "/"} scroll={false} className={!category ? "active" : ""}>전체</Link>
           {PRODUCT_CATEGORIES.map((item) => {
             const params = new URLSearchParams();
             params.set("category", item);
             if (keyword) params.set("q", keyword);
-            return <Link key={item} href={`/?${params}`} className={category === item ? "active" : ""}>{item}</Link>;
+            return <Link key={item} href={`/?${params}`} scroll={false} className={category === item ? "active" : ""}>{item}</Link>;
           })}
         </div>
       </section>
@@ -63,14 +64,7 @@ export default async function Home({ searchParams }) {
             <p className="eyebrow">선물 큐레이션</p>
             <h2>{category || "마음을 전하기 좋은 선물"}</h2>
           </div>
-          <form className="search-form" action="/" method="get">
-            {category && <input type="hidden" name="category" value={category} />}
-            <label>
-              <span className="sr-only">상품 검색</span>
-              <input name="q" defaultValue={keyword} placeholder="어떤 선물을 찾으세요?" />
-            </label>
-            <button className="button button-dark" type="submit">검색</button>
-          </form>
+          <ProductSearchForm key={`${category}:${keyword}`} category={category} keyword={keyword} />
         </div>
 
         {products.length ? (

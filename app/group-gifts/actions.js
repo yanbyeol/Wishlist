@@ -9,11 +9,16 @@ import {
   getGroupGiftById,
   retryGroupGiftPayment,
 } from "@/lib/group-gifts";
+import {
+  getGuestGroupGiftSession,
+  requestGuestGroupGiftOtp,
+  verifyGuestGroupGiftOtp,
+} from "@/lib/group-gift-otp";
 import { getProductById } from "@/lib/products";
-import { requireUser } from "@/lib/session";
-import { findUserById } from "@/lib/users";
+import { getCurrentUser, requireUser } from "@/lib/session";
+import { findUserByEmail, findUserById } from "@/lib/users";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
-import { parsePositiveInteger } from "@/lib/utils/validation";
+import { isValidEmail, parsePositiveInteger } from "@/lib/utils/validation";
 import { isProductInWishlist } from "@/lib/wishlists";
 
 export async function createGroupGiftAction(previousState, formData) {
@@ -24,7 +29,7 @@ export async function createGroupGiftAction(previousState, formData) {
   const title = String(formData.get("title") ?? "").trim();
 
   if (title.length < 2 || title.length > 60) {
-    return { message: "같이 선물 제목은 2자 이상 60자 이하로 입력해 주세요." };
+    return { message: "함께 선물하기 제목은 2자 이상 60자 이하로 입력해 주세요." };
   }
 
   const [product, recipient, isWishlisted] = await Promise.all([
@@ -61,18 +66,100 @@ export async function createGroupGiftAction(previousState, formData) {
       title,
     });
   } catch {
-    return { message: "같이 선물하기를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요." };
+    return { message: "함께 선물하기를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   revalidatePath(from);
   redirect(`/group-gifts/${groupGift.id}`);
 }
 
+async function recipientMatchesEmail(groupGift, email) {
+  const emailUser = await findUserByEmail(email);
+  return emailUser?.id === groupGift.recipientId;
+}
+
+export async function requestGroupGiftOtpAction(groupGiftId, previousState, formData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (!isValidEmail(email)) {
+    return { message: "올바른 이메일을 입력해 주세요.", error: true, email };
+  }
+
+  const [user, groupGift] = await Promise.all([
+    getCurrentUser(),
+    getGroupGiftById(groupGiftId),
+  ]);
+
+  if (user) {
+    return { message: "로그인 세션으로 바로 참여할 수 있습니다.", error: false };
+  }
+
+  if (!groupGift || groupGift.status !== "funding") {
+    return { message: "현재 함께 선물하기에 참여할 수 없습니다.", error: true, email };
+  }
+
+  if (await recipientMatchesEmail(groupGift, email)) {
+    return { message: "선물을 받는 사람은 참여할 수 없습니다.", error: true, email };
+  }
+
+  try {
+    const result = await requestGuestGroupGiftOtp(groupGiftId, email);
+    const message = result.demoCode
+      ? `개발용 인증번호는 ${result.demoCode}입니다.`
+      : `${result.email}로 인증번호를 보냈습니다.`;
+
+    return {
+      requested: true,
+      email: result.email,
+      message,
+      error: false,
+    };
+  } catch (error) {
+    return {
+      message: String(error?.message ?? "인증번호를 보내지 못했습니다."),
+      error: true,
+      email,
+    };
+  }
+}
+
+export async function verifyGroupGiftOtpAction(groupGiftId, previousState, formData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const code = String(formData.get("code") ?? "").trim();
+  const groupGift = await getGroupGiftById(groupGiftId);
+
+  if (!groupGift || groupGift.status !== "funding") {
+    return { message: "현재 함께 선물하기에 참여할 수 없습니다.", error: true, email };
+  }
+
+  if (await recipientMatchesEmail(groupGift, email)) {
+    return { message: "선물을 받는 사람은 참여할 수 없습니다.", error: true, email };
+  }
+
+  try {
+    await verifyGuestGroupGiftOtp(groupGiftId, email, code);
+  } catch (error) {
+    return {
+      message: String(error?.message ?? "이메일 인증을 완료하지 못했습니다."),
+      error: true,
+      email,
+    };
+  }
+
+  revalidatePath(`/group-gifts/${groupGiftId}`);
+  redirect(`/group-gifts/${groupGiftId}`);
+}
+
 export async function contributeGroupGiftAction(groupGiftId, previousState, formData) {
-  const user = await requireUser(`/group-gifts/${groupGiftId}`);
+  const user = await getCurrentUser();
+  const guestSession = user ? null : await getGuestGroupGiftSession(groupGiftId);
   const nickname = String(formData.get("nickname") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const amount = parsePositiveInteger(formData.get("amount"));
+
+  if (!user && !guestSession) {
+    return { message: "로그인하거나 이메일 인증을 완료해 주세요." };
+  }
 
   if (nickname.length < 2 || nickname.length > 20) {
     return { message: "닉네임은 2자 이상 20자 이하로 입력해 주세요." };
@@ -89,11 +176,15 @@ export async function contributeGroupGiftAction(groupGiftId, previousState, form
   const groupGift = await getGroupGiftById(groupGiftId);
 
   if (!groupGift) {
-    return { message: "같이 선물 정보를 찾을 수 없습니다." };
+    return { message: "함께 선물하기 정보를 찾을 수 없습니다." };
   }
 
-  if (groupGift.recipientId === user.id) {
-    return { message: "선물을 받는 사람은 같이 선물 금액에 참여할 수 없습니다." };
+  if (groupGift.recipientId === user?.id) {
+    return { message: "선물을 받는 사람은 함께 선물하기에 참여할 수 없습니다." };
+  }
+
+  if (guestSession && await recipientMatchesEmail(groupGift, guestSession.email)) {
+    return { message: "선물을 받는 사람은 함께 선물하기에 참여할 수 없습니다." };
   }
 
   let result;
@@ -101,7 +192,8 @@ export async function contributeGroupGiftAction(groupGiftId, previousState, form
   try {
     result = await contributeToGroupGift({
       groupGiftId,
-      userId: user.id,
+      userId: user?.id,
+      guestEmail: guestSession?.email,
       nickname,
       amount,
       message,
@@ -117,18 +209,30 @@ export async function contributeGroupGiftAction(groupGiftId, previousState, form
   if (result.order) {
     revalidatePath("/mypage/gifts");
     revalidatePath("/seller/orders");
-    redirect(`/orders/${result.order.id}`);
+
+    if (user) {
+      redirect(`/orders/${result.order.id}`);
+    }
   }
 
   redirect(`/group-gifts/${groupGiftId}`);
 }
 
 export async function retryGroupGiftPaymentAction(groupGiftId, previousState) {
-  const user = await requireUser(`/group-gifts/${groupGiftId}`);
+  const user = await getCurrentUser();
+  const guestSession = user ? null : await getGuestGroupGiftSession(groupGiftId);
+
+  if (!user && !guestSession) {
+    return { message: "로그인하거나 이메일 인증을 완료해 주세요." };
+  }
+
   let order;
 
   try {
-    order = await retryGroupGiftPayment(groupGiftId, user.id);
+    order = await retryGroupGiftPayment(groupGiftId, {
+      userId: user?.id,
+      guestEmail: guestSession?.email,
+    });
   } catch (error) {
     return { message: String(error?.message ?? "목업 결제를 다시 처리하지 못했습니다.") };
   }
@@ -140,5 +244,10 @@ export async function retryGroupGiftPaymentAction(groupGiftId, previousState) {
   revalidatePath(`/group-gifts/${groupGiftId}`);
   revalidatePath("/mypage/gifts");
   revalidatePath("/seller/orders");
-  redirect(`/orders/${order.id}`);
+
+  if (user) {
+    redirect(`/orders/${order.id}`);
+  }
+
+  redirect(`/group-gifts/${groupGiftId}`);
 }

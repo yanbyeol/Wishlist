@@ -7,6 +7,8 @@ export default function ShareButton({
   title,
   label = "위시리스트 공유하기",
   text = `${title}를 확인해 보세요.`,
+  copyOnly = false,
+  buttonClassName = "button button-primary",
 }) {
   const [message, setMessage] = useState("");
 
@@ -14,14 +16,14 @@ export default function ShareButton({
     const url = `${window.location.origin}${path}`;
 
     try {
-      if (navigator.share) {
+      if (!copyOnly && navigator.share) {
         await navigator.share({ title, text, url });
         setMessage("공유 창을 열었어요.");
         return;
       }
 
       await navigator.clipboard.writeText(url);
-      setMessage("공유 링크를 복사했어요.");
+      setMessage("링크를 복사했어요.");
     } catch (error) {
       if (error?.name !== "AbortError") {
         setMessage("공유하지 못했어요. 다시 시도해 주세요.");
@@ -31,7 +33,7 @@ export default function ShareButton({
 
   return (
     <div className="share-control">
-      <button className="button button-primary" type="button" onClick={shareWishlist}>
+      <button className={buttonClassName} type="button" onClick={shareWishlist}>
         {label}
       </button>
       <p className="form-message" aria-live="polite">{message}</p>

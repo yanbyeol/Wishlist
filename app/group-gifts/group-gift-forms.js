@@ -4,7 +4,9 @@ import { useActionState } from "react";
 import {
   contributeGroupGiftAction,
   createGroupGiftAction,
+  requestGroupGiftOtpAction,
   retryGroupGiftPaymentAction,
+  verifyGroupGiftOtpAction,
 } from "@/app/group-gifts/actions";
 import { formatWon } from "@/lib/utils/format";
 
@@ -24,7 +26,7 @@ export function CreateGroupGiftForm({ product, recipient, from }) {
         <small>목표 금액 {formatWon(product.price)} · 모집 기간 14일</small>
       </div>
       <label className="field">
-        <span>같이 선물 제목</span>
+        <span>함께 선물하기 제목</span>
         <input
           name="title"
           type="text"
@@ -40,13 +42,83 @@ export function CreateGroupGiftForm({ product, recipient, from }) {
       </div>
       <p className="form-message error-message" aria-live="polite">{state?.message}</p>
       <button className="button button-primary button-full" type="submit" disabled={pending}>
-        {pending ? "같이 선물을 만드는 중..." : "같이 선물하기 시작"}
+        {pending ? "함께 선물하기를 만드는 중..." : "함께 선물하기 시작"}
       </button>
     </form>
   );
 }
 
-export function ContributionForm({ groupGift, user }) {
+export function GuestOtpForm({ groupGiftId }) {
+  const requestAction = requestGroupGiftOtpAction.bind(null, groupGiftId);
+  const verifyAction = verifyGroupGiftOtpAction.bind(null, groupGiftId);
+  const [requestState, requestFormAction, requestPending] = useActionState(
+    requestAction,
+    initialState,
+  );
+  const [verifyState, verifyFormAction, verifyPending] = useActionState(
+    verifyAction,
+    initialState,
+  );
+
+  return (
+    <div className="guest-otp-section">
+      <div>
+        <h2>이메일로 간편 인증</h2>
+        <p>회원가입 없이 이 함께 선물하기에만 참여할 수 있어요.</p>
+      </div>
+      <form action={requestFormAction} className="stack-form">
+        <label className="field">
+          <span>이메일</span>
+          <input
+            name="email"
+            type="email"
+            autoComplete="email"
+            defaultValue={requestState?.email ?? ""}
+            placeholder="friend@example.com"
+            required
+          />
+        </label>
+        <p
+          className={`form-message ${requestState?.error ? "error-message" : ""}`}
+          aria-live="polite"
+        >
+          {requestState?.message}
+        </p>
+        <button className="button button-secondary button-full" type="submit" disabled={requestPending}>
+          {requestPending ? "인증번호를 보내는 중..." : "인증번호 받기"}
+        </button>
+      </form>
+
+      {requestState?.requested && (
+        <form action={verifyFormAction} className="stack-form otp-verification-form">
+          <input type="hidden" name="email" value={requestState.email} />
+          <label className="field">
+            <span>6자리 인증번호</span>
+            <input
+              name="code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              minLength="6"
+              maxLength="6"
+              pattern="[0-9]{6}"
+              placeholder="000000"
+              required
+            />
+          </label>
+          <p className="form-message error-message" aria-live="polite">
+            {verifyState?.message}
+          </p>
+          <button className="button button-primary button-full" type="submit" disabled={verifyPending}>
+            {verifyPending ? "인증하는 중..." : "인증하고 참여하기"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export function ContributionForm({ groupGift, defaultNickname }) {
   const action = contributeGroupGiftAction.bind(null, groupGift.id);
   const [state, formAction, pending] = useActionState(action, initialState);
   const remaining = groupGift.targetAmount - groupGift.currentAmount;
@@ -63,7 +135,7 @@ export function ContributionForm({ groupGift, user }) {
       </label>
       <label className="field">
         <span>공개 닉네임</span>
-        <input name="nickname" type="text" minLength="2" maxLength="20" defaultValue={user.name} required />
+        <input name="nickname" type="text" minLength="2" maxLength="20" defaultValue={defaultNickname} required />
       </label>
       <label className="field">
         <span>축하 메시지 (선택)</span>

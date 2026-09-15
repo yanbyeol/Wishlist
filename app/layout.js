@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 
 export const metadata = {
   title: {
-    default: "WishMate | 마음을 모아 선물해요",
+    default: "WishMate | 함께 선물해요",
     template: "%s | WishMate",
   },
   description: "나와 친구의 위시리스트를 함께 채우는 선물 기반 쇼핑몰",

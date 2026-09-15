@@ -3,12 +3,14 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import {
   ContributionForm,
+  GuestOtpForm,
   RetryGroupGiftForm,
 } from "@/app/group-gifts/group-gift-forms";
 import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
-import { getGroupGiftById } from "@/lib/group-gifts";
+import { getGuestGroupGiftSession } from "@/lib/group-gift-otp";
+import { getGroupGiftById, hasGroupGiftContribution } from "@/lib/group-gifts";
 import { getCurrentUser } from "@/lib/session";
 import {
   formatDate,
@@ -35,28 +37,37 @@ export default async function GroupGiftPage({ params }) {
     notFound();
   }
 
+  const guestSession = user ? null : await getGuestGroupGiftSession(groupGift.id);
+
   const percent = Math.min(
     100,
     Math.round((groupGift.currentAmount / groupGift.targetAmount) * 100),
   );
   const isRecipient = user?.id === groupGift.recipientId;
-  const hasContribution = groupGift.contributions.some(
-    (contribution) => contribution.userId === user?.id,
-  );
+  const hasContribution = user
+    ? groupGift.contributions.some((contribution) => contribution.userId === user.id)
+    : guestSession
+      ? await hasGroupGiftContribution({
+        groupGiftId: groupGift.id,
+        guestEmail: guestSession.email,
+      })
+      : false;
+  const guestNickname = guestSession?.email.split("@")[0].slice(0, 20);
 
   return (
     <section className="container page-section">
       <div className="page-heading heading-with-action">
         <div>
-          <p className="eyebrow">같이 선물하기</p>
+          <p className="eyebrow">함께 선물하기</p>
           <h1>{groupGift.title}</h1>
-          <p>{groupGift.recipient?.name ?? "친구"}님을 위해 마음을 모으고 있어요.</p>
+          <p>{groupGift.recipient?.name ?? "친구"}님을 위한 선물을 함께 준비하고 있어요.</p>
         </div>
         <ShareButton
           path={`/group-gifts/${groupGift.id}`}
           title={groupGift.title}
-          text="같이 준비하는 선물에 마음을 보태 주세요."
-          label="참여 링크 공유하기"
+          text="함께 준비하는 선물에 참여해 주세요."
+          label="참여 링크 복사"
+          copyOnly
         />
       </div>
 
@@ -67,7 +78,7 @@ export default async function GroupGiftPage({ params }) {
             <div>
               <p className="eyebrow">{groupGift.product.category}</p>
               <h2>{groupGift.product.name}</h2>
-              <p>{groupGift.organizer?.name ?? "친구"}님이 같이 선물을 시작했어요.</p>
+              <p>{groupGift.organizer?.name ?? "친구"}님이 함께 선물하기를 시작했어요.</p>
             </div>
             <StatusBadge tone={statusTone(groupGift.status)}>
               {getGroupGiftStatusLabel(groupGift.status)}
@@ -87,37 +98,37 @@ export default async function GroupGiftPage({ params }) {
 
           <div className="info-card contribution-list">
             <div className="section-heading compact-section-heading">
-              <div><p className="eyebrow">함께한 마음</p><h2>{groupGift.contributions.length}명이 참여했어요</h2></div>
+              <div><p className="eyebrow">함께 선물한 친구들</p><h2>{groupGift.contributions.length}명이 참여했어요</h2></div>
             </div>
             {groupGift.contributions.length > 0 ? (
               <ul>
                 {groupGift.contributions.map((contribution) => (
                   <li key={contribution.id}>
                     <span className="contributor-avatar">{contribution.nickname.slice(0, 1)}</span>
-                    <div><strong>{contribution.nickname}</strong><p>{contribution.message || "함께 마음을 보탰어요."}</p></div>
+                    <div><strong>{contribution.nickname}</strong><p>{contribution.message || "함께 선물했어요."}</p></div>
                     <span>{formatWon(contribution.amount)}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="muted-copy">첫 번째 마음을 보태 주세요.</p>
+              <p className="muted-copy">첫 번째로 함께 선물해 주세요.</p>
             )}
           </div>
         </div>
 
         <aside className="participation-panel">
-          {groupGift.status === "funding" && !user && (
-            <div className="stack-form">
-              <h2>같이 참여해 볼까요?</h2>
-              <p>로그인하면 원하는 금액과 축하 메시지를 보탤 수 있어요.</p>
-              <Link href={`/login?callback=${encodeURIComponent(`/group-gifts/${groupGift.id}`)}`} className="button button-primary button-full">로그인하고 참여하기</Link>
-            </div>
+          {groupGift.status === "funding" && !user && !guestSession && (
+            <GuestOtpForm groupGiftId={groupGift.id} />
           )}
-          {groupGift.status === "funding" && user && !isRecipient && (
+          {groupGift.status === "funding" && (user || guestSession) && !isRecipient && (
             <>
-              <h2>마음 보태기</h2>
+              <h2>함께 선물하기</h2>
               <p>실제 결제 없이 선택한 금액만 목표에 반영됩니다.</p>
-              <ContributionForm groupGift={groupGift} user={user} />
+              {guestSession && <p className="verified-participant">이메일 인증으로 참여 중이에요.</p>}
+              <ContributionForm
+                groupGift={groupGift}
+                defaultNickname={user?.name ?? (guestNickname?.length >= 2 ? guestNickname : "게스트")}
+              />
             </>
           )}
           {groupGift.status === "funding" && isRecipient && (
@@ -126,8 +137,8 @@ export default async function GroupGiftPage({ params }) {
           {groupGift.status === "payment_failed" && (
             <div className="stack-form">
               <h2>데모 결제를 다시 처리해 주세요</h2>
-              <p>참여 내역이 있는 회원만 다시 시도할 수 있습니다.</p>
-              {hasContribution ? <RetryGroupGiftForm groupGiftId={groupGift.id} /> : <p className="muted-copy">참여한 회원이 다시 처리할 수 있어요.</p>}
+              <p>참여 내역이 있는 사용자만 다시 시도할 수 있습니다.</p>
+              {hasContribution ? <RetryGroupGiftForm groupGiftId={groupGift.id} /> : <p className="muted-copy">참여한 사용자가 다시 처리할 수 있어요.</p>}
             </div>
           )}
           {groupGift.status === "completed" && (

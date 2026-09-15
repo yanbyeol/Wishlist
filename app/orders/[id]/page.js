@@ -61,7 +61,7 @@ export default async function OrderDetailPage({ params }) {
           alt={order.productSnapshot.name}
         />
         <div>
-          <p className="eyebrow">{order.type === "group" ? "같이 준비한 선물" : "선물 상품"}</p>
+          <p className="eyebrow">{order.type === "group" ? "함께 선물하기" : "선물 상품"}</p>
           <h2>{order.productSnapshot.name}</h2>
           <strong>{formatWon(order.totalAmount)}</strong>
           <p>{order.sender?.name ?? "보낸 사람"} → {order.recipient?.name ?? "받는 사람"}</p>

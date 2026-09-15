@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { GiftIcon } from "@/components/icons";
 
-export default function ProductImage({ src, alt, className = "" }) {
-  const [hasImage, setHasImage] = useState(Boolean(src));
+const fallbackImageUrl = "/images/products/fallback.jpg";
 
-  if (!hasImage) {
+export default function ProductImage({ src, alt, className = "" }) {
+  const sourceUrl = src || fallbackImageUrl;
+  const [failure, setFailure] = useState({ sourceUrl: "", fallbackFailed: false });
+  const sourceFailed = failure.sourceUrl === sourceUrl;
+  const imageUrl = sourceFailed ? fallbackImageUrl : sourceUrl;
+  const fallbackFailed = sourceFailed && failure.fallbackFailed;
+
+  if (fallbackFailed) {
     return (
       <div className={`product-image-fallback ${className}`} role="img" aria-label={`${alt} 기본 이미지`}>
         <GiftIcon size={42} />
@@ -20,9 +26,16 @@ export default function ProductImage({ src, alt, className = "" }) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       className={`product-image ${className}`}
-      src={src}
-      alt={alt}
-      onError={() => setHasImage(false)}
+      src={imageUrl}
+      alt={imageUrl === fallbackImageUrl ? `${alt} 기본 이미지` : alt}
+      onError={() => {
+        if (imageUrl !== fallbackImageUrl) {
+          setFailure({ sourceUrl, fallbackFailed: false });
+          return;
+        }
+
+        setFailure({ sourceUrl, fallbackFailed: true });
+      }}
     />
   );
 }

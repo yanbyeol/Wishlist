@@ -2,8 +2,8 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import EmptyState from "@/components/empty-state";
 import ProductCard from "@/components/product-card";
-import { getCurrentUser } from "@/lib/session";
-import { getSharedWishlist, getWishlistedProductIds } from "@/lib/wishlists";
+import { findOpenGroupGiftsForProducts } from "@/lib/group-gifts";
+import { getSharedWishlist } from "@/lib/wishlists";
 
 export default async function SharedWishlistPage({ params }) {
   await connection();
@@ -14,9 +14,13 @@ export default async function SharedWishlistPage({ params }) {
     notFound();
   }
 
-  const user = await getCurrentUser();
-  const wishlistedIds = user ? await getWishlistedProductIds(user.id) : [];
-  const wishlisted = new Set(wishlistedIds);
+  const openGroupGifts = await findOpenGroupGiftsForProducts(
+    wishlist.userId,
+    wishlist.items.map(({ product }) => product.id),
+  );
+  const groupGiftByProductId = new Map(
+    openGroupGifts.map((groupGift) => [groupGift.productId, groupGift]),
+  );
 
   return (
     <section className="container page-section">
@@ -28,16 +32,20 @@ export default async function SharedWishlistPage({ params }) {
 
       {wishlist.items.length > 0 ? (
         <div className="product-grid">
-          {wishlist.items.map(({ product }) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              user={user}
-              isWishlisted={wishlisted.has(product.id)}
-              detailsHref={`/shared/${token}/products/${product.id}`}
-              returnPath={`/shared/${token}`}
-            />
-          ))}
+          {wishlist.items.map(({ product }) => {
+            const groupGift = groupGiftByProductId.get(product.id);
+
+            return (
+              <ProductCard
+                key={product.id}
+                product={product}
+                detailsHref={`/shared/${token}/products/${product.id}`}
+                showWishlistAction={false}
+                participationPath={groupGift ? `/group-gifts/${groupGift.id}` : ""}
+                participationTitle={groupGift?.title}
+              />
+            );
+          })}
         </div>
       ) : (
         <EmptyState

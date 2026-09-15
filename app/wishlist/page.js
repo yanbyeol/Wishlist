@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import EmptyState from "@/components/empty-state";
 import ProductCard from "@/components/product-card";
 import ShareButton from "@/components/share-button";
+import { findOpenGroupGiftsForProducts } from "@/lib/group-gifts";
 import { requireUser } from "@/lib/session";
 import { getWishlistForUser } from "@/lib/wishlists";
 
@@ -12,6 +13,13 @@ export default async function WishlistPage() {
   await connection();
   const user = await requireUser("/wishlist");
   const wishlist = await getWishlistForUser(user);
+  const openGroupGifts = await findOpenGroupGiftsForProducts(
+    user.id,
+    wishlist.items.map(({ product }) => product.id),
+  );
+  const groupGiftByProductId = new Map(
+    openGroupGifts.map((groupGift) => [groupGift.productId, groupGift]),
+  );
 
   return (
     <section className="container page-section">
@@ -19,7 +27,7 @@ export default async function WishlistPage() {
         <div>
           <p className="eyebrow">내가 기다리는 선물</p>
           <h1>{wishlist.title}</h1>
-          <p>마음에 드는 상품을 모으고 링크로 친구들에게 알려 보세요.</p>
+          <p>갖고 싶은 상품을 담고 링크로 친구들에게 알려 보세요.</p>
         </div>
         {wishlist.items.length > 0 && (
           <ShareButton
@@ -32,15 +40,21 @@ export default async function WishlistPage() {
       {wishlist.items.length > 0 ? (
         <>
           <div className="product-grid">
-            {wishlist.items.map(({ product }) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                user={user}
-                isWishlisted
-                returnPath="/wishlist"
-              />
-            ))}
+            {wishlist.items.map(({ product }) => {
+              const groupGift = groupGiftByProductId.get(product.id);
+
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  user={user}
+                  isWishlisted
+                  returnPath="/wishlist"
+                  participationPath={groupGift ? `/group-gifts/${groupGift.id}` : ""}
+                  participationTitle={groupGift?.title}
+                />
+              );
+            })}
           </div>
           <div className="centered-action">
             <Link href="/" className="button button-secondary">+ 상품 추가하기</Link>
