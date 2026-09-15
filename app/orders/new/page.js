@@ -13,7 +13,14 @@ export default async function NewOrderPage({ searchParams }) {
   const query = await searchParams;
   const productId = typeof query.product === "string" ? query.product : "";
   const requestedMode = query.mode === "self" ? "self" : "single";
-  const callback = `/orders/new?product=${encodeURIComponent(productId)}${requestedMode === "self" ? "&mode=self" : ""}`;
+  const recipientId = typeof query.recipient === "string" ? query.recipient : "";
+  const from = sanitizeCallbackPath(query.from, `/products/${productId}`);
+  const callbackParams = new URLSearchParams({ product: productId, from });
+
+  if (requestedMode === "self") callbackParams.set("mode", "self");
+  if (recipientId) callbackParams.set("recipient", recipientId);
+
+  const callback = `/orders/new?${callbackParams}`;
   const user = await requireUser(callback);
   const product = await getProductById(productId);
 
@@ -21,7 +28,6 @@ export default async function NewOrderPage({ searchParams }) {
     notFound();
   }
 
-  const recipientId = typeof query.recipient === "string" ? query.recipient : "";
   const requestedRecipient = recipientId ? await findUserById(recipientId) : null;
 
   if (recipientId && !requestedRecipient) {
@@ -30,7 +36,6 @@ export default async function NewOrderPage({ searchParams }) {
 
   const mode = requestedMode === "self" || requestedRecipient?.id === user.id ? "self" : "single";
   const recipient = mode === "self" ? user : requestedRecipient;
-  const from = sanitizeCallbackPath(query.from, `/products/${product.id}`);
 
   return (
     <section className="container page-section">

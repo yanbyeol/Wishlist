@@ -16,7 +16,7 @@ export default async function RootLayout({ children }) {
   const user = await getCurrentUser();
 
   return (
-    <html lang="ko">
+    <html lang="ko" data-scroll-behavior="smooth">
       <body>
         <SiteHeader user={user} />
         <main className="site-main">{children}</main>

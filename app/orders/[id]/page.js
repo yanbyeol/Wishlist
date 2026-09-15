@@ -45,7 +45,7 @@ export default async function OrderDetailPage({ params }) {
         </StatusBadge>
       </div>
 
-      {order.card && (
+      {order.card && (isSender || isRecipient) && (
         <div className={`gift-card gift-card-${order.card.theme ?? "warm-confetti"}`}>
           <span className="gift-card-sparkle">✦</span>
           <p>WishMate celebration card</p>

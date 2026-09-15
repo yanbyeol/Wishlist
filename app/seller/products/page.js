@@ -42,11 +42,15 @@ export default async function SellerProductsPage({ searchParams }) {
               <StatusBadge tone={product.status === "active" ? "success" : product.status === "sold_out" ? "warm" : "neutral"}>
                 {product.status === "active" ? "판매 중" : product.status === "sold_out" ? "품절" : "판매 종료"}
               </StatusBadge>
-              <div className="inline-actions item-actions">
-                <Link href={`/products/${product.id}`} className="text-link">보기</Link>
-                {product.status !== "archived" && <Link href={`/products/${product.id}/edit`} className="text-link">수정</Link>}
-                <DeleteProductForm productId={product.id} />
-              </div>
+              {product.status !== "archived" ? (
+                <div className="inline-actions item-actions">
+                  <Link href={`/products/${product.id}`} className="text-link">보기</Link>
+                  <Link href={`/products/${product.id}/edit`} className="text-link">수정</Link>
+                  <DeleteProductForm productId={product.id} />
+                </div>
+              ) : (
+                <p className="muted-copy">주문 기록 보관 중</p>
+              )}
             </article>
           ))}
         </div>

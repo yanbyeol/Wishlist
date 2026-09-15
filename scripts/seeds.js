@@ -61,7 +61,8 @@ async function createSeed() {
     shareToken: `wishmate-demo-${index + 1}`, visibility: "public",
   }));
   // 도윤의 위시리스트는 빈 상태 UI 확인용.
-  const wishlistItems = [[61, 51, 31], [62, 51, 32], [63, 51, 37], [64, 52, 36], [65, 53, 34]]
+  // 이미 주문 완료된 32번·37번 상품은 실제 주문 흐름처럼 민지의 목록에서 제외한다.
+  const wishlistItems = [[61, 51, 31], [66, 51, 33], [64, 52, 36], [65, 53, 34]]
     .map(([number, wishlist, product]) => document(number, {
       wishlistId: id(wishlist).toHexString(),
       productId: id(product).toHexString(),
@@ -74,9 +75,13 @@ async function createSeed() {
       title: "민지의 새 출발을 응원해", targetAmount: 120000, currentAmount: 120000,
       status: "completed", expiresAt: new Date("2026-09-20T00:00:00Z"), orderId: id(93).toHexString() }),
   ];
-  const contributions = [[81, 71, 2, 50000], [82, 71, 3, 40000], [83, 72, 2, 70000], [84, 72, 4, 50000]]
-    .map(([number, group, sender, amount]) => document(number, {
-      groupGiftId: id(group).toHexString(), userId: id(sender).toHexString(), amount, message: "새로운 하루도 행복하게 보내!",
+  const contributions = [
+    [81, 71, 2, "준호", 50000],
+    [82, 71, 3, "서연", 40000],
+    [83, 72, 2, "준호", 70000],
+    [84, 72, 4, "도윤", 50000],
+  ].map(([number, group, sender, nickname, amount]) => document(number, {
+      groupGiftId: id(group).toHexString(), userId: id(sender).toHexString(), nickname, amount, message: "새로운 하루도 행복하게 보내!",
       paymentStatus: "paid", paymentProvider: "mock", paymentId: `mock-contribution-${number}`,
     }));
   const orders = [
