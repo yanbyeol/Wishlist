@@ -1,0 +1,6 @@
+.filter { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 24px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-medium); background: var(--surface); }
+.statuses { display: flex; flex-wrap: wrap; gap: 12px 20px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.statuses legend { margin-bottom: 10px; font-size: 14px; font-weight: 700; }
+.statuses label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+.statuses input { accent-color: var(--primary); }
+.help { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12px; }
