@@ -51,7 +51,7 @@ export default async function OrderDetailPage({ params }) {
           <p>WishMate celebration card</p>
           <h2>{order.card.title}</h2>
           <blockquote>{order.card.message}</blockquote>
-          <small>AI 축하 카드 · {order.card.generationProvider === "mock" ? "데모 생성" : order.card.generationProvider}</small>
+          <small>보낸 사람 · {order.sender?.name ?? "친구"} · AI 축하 카드 · {order.card.generationProvider === "mock" ? "데모 생성" : order.card.generationProvider}</small>
         </div>
       )}
 

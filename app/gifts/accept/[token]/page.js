@@ -28,6 +28,7 @@ export default async function AcceptGiftPage({ params }) {
         <p>당신을 위한 축하 카드</p>
         <h1>{gift.card.title}</h1>
         <blockquote>{gift.card.message}</blockquote>
+        <small>보낸 사람 · {gift.sender?.name ?? "친구"}</small>
       </div>
       <div>
         <div className="info-card acceptance-product">

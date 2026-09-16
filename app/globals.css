@@ -1075,7 +1075,6 @@ img {
 .gift-card h1,
 .gift-card h2 {
   margin: 12px 0 18px;
-  font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(30px, 5vw, 46px);
   line-height: 1.15;
 }
@@ -1195,6 +1194,27 @@ img {
 }
 
 .contribution-list li p { color: var(--muted); font-size: 13px; }
+
+.contribution-list li.completed-contribution {
+  grid-template-columns: 1fr;
+}
+
+.completed-contribution > div { min-width: 0; }
+
+.contribution-progress-track {
+  height: 9px;
+  overflow: hidden;
+  margin: 9px 0;
+  border-radius: 999px;
+  background: #eee7e4;
+}
+
+.contribution-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary), #a66bd2);
+}
 
 .seller-order-card { display: flex; flex-direction: column; gap: 20px; }
 .seller-order-heading { justify-content: space-between; gap: 18px; }
