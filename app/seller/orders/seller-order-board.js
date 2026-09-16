@@ -36,12 +36,19 @@ export default function SellerOrderBoard({ initialOrders, initialStatuses, initi
       if (window.location.pathname === "/seller/orders") filterForm.current?.requestSubmit();
     }
 
+    const urlStatuses = getSellerOrderStatuses(new URLSearchParams(window.location.search).getAll("status"));
+    const hasSameInitialStatuses = urlStatuses.length === initialStatuses.length
+      && urlStatuses.every((status, index) => status === initialStatuses[index]);
+
+    // 상세 화면에서 뒤로 돌아온 경우 URL은 복원되지만 부분 조회 결과는 사라지므로 다시 조회합니다.
+    if (!hasSameInitialStatuses) restoreFilter();
+
     window.addEventListener("popstate", restoreFilter);
     return () => {
       window.removeEventListener("popstate", restoreFilter);
       latestRequest.current += 1;
     };
-  }, []);
+  }, [initialStatuses]);
 
   function submitFilter(event) {
     event.preventDefault();

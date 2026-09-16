@@ -174,15 +174,16 @@ function findElements(tree, predicate) {
 }
 
 // Hook 저장소와 브라우저 이벤트만 대체하고 실제 보드의 이벤트 함수를 실행합니다.
-function createBoard(initialOrders) {
+function createBoard(initialOrders, initialSearch = "") {
   const cells = [];
   const listeners = new Map();
   const requests = [];
   const tasks = [];
+  const pendingEffects = [];
   let cursor = 0;
   let tree;
   let props = { initialOrders, initialStatuses: ["awaiting_address", "preparing"], initialNotice: "" };
-  const window = { location: { pathname: "/seller/orders", search: "", hash: "" }, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
+  const window = { location: { pathname: "/seller/orders", search: initialSearch, hash: "" }, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
   function Checkboxes() {}
   const react = {
     useState(initial) {
@@ -197,7 +198,10 @@ function createBoard(initialOrders) {
     },
     useEffect(effect) {
       const index = cursor++;
-      if (!cells[index]) cells[index] = { cleanup: effect() };
+      if (!cells[index]) {
+        cells[index] = {};
+        pendingEffects.push({ cell: cells[index], effect });
+      }
     },
     startTransition(action) { tasks.push(Promise.resolve(action())); },
   };
@@ -218,6 +222,9 @@ function createBoard(initialOrders) {
     tree = Board(props);
     const form = findElements(tree, (node) => node.type === "form" && node.props.method === "get")[0];
     form.props.ref.current = { requestSubmit: () => form.props.onSubmit({ preventDefault() {} }) };
+    for (const pendingEffect of pendingEffects.splice(0)) {
+      pendingEffect.cell.cleanup = pendingEffect.effect();
+    }
     return tree;
   }
   render();
@@ -288,6 +295,17 @@ test("뒤로 가기는 현재 URL로 재조회하고 저장 후 새 서버 데�
   board.requests[1].resolve({ orders: [displayedOrder()], error: "" });
   await board.tasks[1];
   assert.equal(board.cards().length, 0);
+});
+
+test("주문 상세에서 뒤로 돌아와 보드가 다시 마운트되면 URL 필터로 목록을 복원한다", async () => {
+  const board = createBoard([displayedOrder("기본 상태 주문")], "?status=shipped");
+  assert.deepEqual(board.requests[0].statuses, ["shipped"]);
+  const shippedOrder = { ...displayedOrder("배송 중 주문"), status: "shipped" };
+  board.requests[0].resolve({ orders: [shippedOrder], error: "" });
+  await board.tasks[0];
+  board.render();
+  assert.deepEqual(Array.from(board.selected()), ["shipped"]);
+  assert.equal(findElements(board.cards()[0], (node) => node.type === "h2")[0].props.children, "배송 중 주문");
 });
 
 test("체크박스는 마지막 선택 해제를 막고 유효한 변경만 주소 기록 후 폼에 전달한다", () => {
