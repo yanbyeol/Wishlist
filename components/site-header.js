@@ -125,9 +125,6 @@ export default function SiteHeader({ isLoggedIn, userName }) {
                         >
                           사용자 모드로 전환
                         </Link>
-                        <Link href="/seller/products" role="menuitem" onClick={() => setIsAccountMenuOpen(false)}>
-                          판매자 관리
-                        </Link>
                       </>
                     )}
                     <form action={signOutAction}>
