@@ -151,6 +151,9 @@ img {
 .main-nav a:hover,
 .nav-button:hover { color: var(--primary-dark); }
 
+.seller-nav-link { padding-block: 8px; border-bottom: 2px solid transparent; }
+.seller-nav-link[aria-current="page"] { color: var(--primary-dark); border-bottom-color: var(--primary); }
+
 .nav-button {
   border: 0;
   background: transparent;
