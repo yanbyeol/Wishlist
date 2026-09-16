@@ -116,7 +116,7 @@ export default async function ReceivedGiftsPage() {
             <div className="section-heading compact-section-heading">
               <div>
                 <p className="eyebrow">Action required</p>
-                <h2 id="address-required-heading">배송지 입력 필요 {addressRequiredOrders.length}</h2>
+                <h2 id="address-required-heading">배송지 입력 필요 ({addressRequiredOrders.length})</h2>
               </div>
             </div>
             <ReceivedGiftList orders={addressRequiredOrders} />
