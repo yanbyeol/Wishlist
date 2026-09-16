@@ -31,6 +31,10 @@ export default async function OrderDetailPage({ params }) {
   const isRecipient = user.id === order.recipientId;
   const isSender = user.id === order.senderId;
   const acceptancePath = order.card?.acceptancePath;
+  const contributionTargetAmount = order.groupGift?.targetAmount ?? order.totalAmount;
+  const contributorNames = [...new Set(
+    order.contributions.map((contribution) => contribution.name),
+  )].join(", ");
 
   return (
     <section className="container narrow-page page-section">
@@ -51,7 +55,12 @@ export default async function OrderDetailPage({ params }) {
           <p>WishMate celebration card</p>
           <h2>{order.card.title}</h2>
           <blockquote>{order.card.message}</blockquote>
-          <small>보낸 사람 · {order.sender?.name ?? "친구"} · AI 축하 카드 · {order.card.generationProvider === "mock" ? "데모 생성" : order.card.generationProvider}</small>
+          <small>
+            {order.type === "group" && contributorNames
+              ? `함께 보낸 사람 · ${contributorNames}`
+              : `보낸 사람 · ${order.sender?.name ?? "친구"}`}
+            {` · AI 축하 카드 · ${order.card.generationProvider === "mock" ? "데모 생성" : order.card.generationProvider}`}
+          </small>
         </div>
       )}
 
@@ -64,9 +73,42 @@ export default async function OrderDetailPage({ params }) {
           <p className="eyebrow">{order.type === "group" ? "함께 선물하기" : "선물 상품"}</p>
           <h2>{order.productSnapshot.name}</h2>
           <strong>{formatWon(order.totalAmount)}</strong>
-          <p>{order.sender?.name ?? "보낸 사람"} → {order.recipient?.name ?? "받는 사람"}</p>
+          <p>
+            {order.type === "group"
+              ? `받는 사람 · ${order.recipient?.name ?? "친구"}`
+              : `${order.sender?.name ?? "보낸 사람"} → ${order.recipient?.name ?? "받는 사람"}`}
+          </p>
         </div>
       </div>
+
+      {order.type === "group" && order.contributions.length > 0 && (
+        <div className="info-card order-contribution-results">
+          <p className="eyebrow">함께 선물한 친구들</p>
+          <h2>{order.contributions.length}명의 마음을 모았어요</h2>
+          <ul>
+            {order.contributions.map((contribution) => (
+              <li key={contribution.id}>
+                <strong>{contribution.name}</strong>
+                <div
+                  className="contribution-progress-track"
+                  role="img"
+                  aria-label={`${contribution.name}님의 기여도`}
+                >
+                  <span
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (contribution.amount / contributionTargetAmount) * 100,
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <blockquote>“{contribution.message || "함께 선물했어요."}”</blockquote>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {order.status === "awaiting_address" && acceptancePath && (
         <div className="action-panel">

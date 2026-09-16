@@ -1100,6 +1100,24 @@ img {
 
 .order-result-card { grid-template-columns: 120px 1fr; padding: 18px; }
 
+.order-contribution-results {
+  margin-top: 24px;
+  padding: 26px;
+}
+
+.order-contribution-results h2 { margin-top: 4px; font-size: 24px; }
+.order-contribution-results ul { margin-top: 18px; list-style: none; }
+
+.order-contribution-results li {
+  padding: 15px 0;
+  border-top: 1px solid var(--border);
+}
+
+.order-contribution-results blockquote {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .order-result-card > .product-image,
 .order-result-card > .product-image-fallback,
 .acceptance-product > .product-image,
