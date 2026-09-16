@@ -817,6 +817,17 @@ img {
 .address-choice-copy span { margin-top: 2px; font-size: 14px; }
 .address-choice-copy small { margin-top: 3px; color: var(--muted); }
 
+.address-default-badge {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 2px 7px;
+  color: var(--success);
+  border-radius: 999px;
+  background: #eff8f1;
+  font-size: 11px;
+  font-style: normal;
+}
+
 .form-message { min-height: 20px; color: var(--success); font-size: 13px; }
 .error-message { color: var(--danger); }
 

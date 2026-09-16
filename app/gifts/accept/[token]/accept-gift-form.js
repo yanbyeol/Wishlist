@@ -49,8 +49,11 @@ export default function AcceptGiftForm({ token, addresses, userName }) {
               onChange={() => selectAddress(address)}
             />
             <span className="address-choice-copy">
-              <strong>{address.isDefault ? "기본 배송지" : "저장된 다른 배송지"}</strong>
-              <span>{address.label} · {address.recipientName}</span>
+              <strong>
+                {address.label}
+                {address.isDefault && <em className="address-default-badge">기본 배송지</em>}
+              </strong>
+              <span>{address.recipientName}</span>
               <small>({address.postalCode}) {address.address1} {address.address2}</small>
             </span>
           </label>
@@ -69,29 +72,39 @@ export default function AcceptGiftForm({ token, addresses, userName }) {
           </span>
         </label>
       </fieldset>
-      <div className="form-grid two-columns">
-        <label className="field">
-          <span>받는 분</span>
-          <input name="recipientName" type="text" minLength="2" maxLength="30" value={fields.recipientName} onChange={updateField} required />
-        </label>
-        <label className="field">
-          <span>연락처</span>
-          <input name="phone" type="tel" value={fields.phone} onChange={updateField} placeholder="010-1234-5678" required />
-        </label>
-        <label className="field">
-          <span>우편번호</span>
-          <input name="postalCode" inputMode="numeric" value={fields.postalCode} onChange={updateField} placeholder="12345" required />
-        </label>
-        <span className="field form-spacer" aria-hidden="true" />
-        <label className="field field-wide">
-          <span>기본 주소</span>
-          <input name="address1" type="text" maxLength="100" value={fields.address1} onChange={updateField} required />
-        </label>
-        <label className="field field-wide">
-          <span>상세 주소</span>
-          <input name="address2" type="text" maxLength="100" value={fields.address2} onChange={updateField} />
-        </label>
-      </div>
+      {selectedAddressId === "new" ? (
+        <div className="form-grid two-columns">
+          <label className="field">
+            <span>받는 분</span>
+            <input name="recipientName" type="text" minLength="2" maxLength="30" value={fields.recipientName} onChange={updateField} required />
+          </label>
+          <label className="field">
+            <span>연락처</span>
+            <input name="phone" type="tel" value={fields.phone} onChange={updateField} placeholder="010-1234-5678" required />
+          </label>
+          <label className="field">
+            <span>우편번호</span>
+            <input name="postalCode" inputMode="numeric" value={fields.postalCode} onChange={updateField} placeholder="12345" required />
+          </label>
+          <span className="field form-spacer" aria-hidden="true" />
+          <label className="field field-wide">
+            <span>기본 주소</span>
+            <input name="address1" type="text" maxLength="100" value={fields.address1} onChange={updateField} required />
+          </label>
+          <label className="field field-wide">
+            <span>상세 주소</span>
+            <input name="address2" type="text" maxLength="100" value={fields.address2} onChange={updateField} />
+          </label>
+        </div>
+      ) : (
+        <>
+          <input type="hidden" name="recipientName" value={fields.recipientName} />
+          <input type="hidden" name="phone" value={fields.phone} />
+          <input type="hidden" name="postalCode" value={fields.postalCode} />
+          <input type="hidden" name="address1" value={fields.address1} />
+          <input type="hidden" name="address2" value={fields.address2} />
+        </>
+      )}
       <p className="form-message error-message" aria-live="polite">{state?.message}</p>
       <button className="button button-primary button-full" type="submit" disabled={pending}>
         {pending ? "선물을 수락하는 중..." : "선물 수락하고 배송 요청"}
