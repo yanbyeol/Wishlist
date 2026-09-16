@@ -8,6 +8,7 @@ export default function ProductCard({
   product,
   user,
   isWishlisted = false,
+  isOwned = false,
   detailsHref = `/products/${product.id}`,
   returnPath = "/",
   showWishlistAction = true,
@@ -20,6 +21,7 @@ export default function ProductCard({
         <Link href={detailsHref} aria-label={`${product.name} 상세 보기`}>
           <ProductImage src={product.imageUrl} alt={product.name} />
         </Link>
+        {isOwned && <span className="own-product-badge">내 상품</span>}
         {showWishlistAction && (
           <WishlistButton
             productId={product.id}

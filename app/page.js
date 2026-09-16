@@ -13,12 +13,27 @@ export default async function Home({ searchParams }) {
   const query = await searchParams;
   const category = typeof query.category === "string" ? query.category : "";
   const keyword = typeof query.q === "string" ? query.q.trim() : "";
+  const allowedSorts = new Set(["newest", "price_asc", "price_desc", "popular"]);
+  const requestedSort = typeof query.sort === "string" ? query.sort : "newest";
+  const sort = allowedSorts.has(requestedSort) ? requestedSort : "newest";
+  const excludeSoldOut = query.excludeSoldOut === "1";
   const user = await getCurrentUser();
   const [products, wishlistedIds] = await Promise.all([
-    listProducts({ category, query: keyword }),
+    listProducts({ category, query: keyword, sort, excludeSoldOut }),
     user ? getWishlistedProductIds(user.id) : [],
   ]);
   const wishlisted = new Set(wishlistedIds);
+
+  function getCategoryHref(nextCategory) {
+    const params = new URLSearchParams();
+
+    if (nextCategory) params.set("category", nextCategory);
+    if (keyword) params.set("q", keyword);
+    if (sort !== "newest") params.set("sort", sort);
+    if (excludeSoldOut) params.set("excludeSoldOut", "1");
+
+    return params.size > 0 ? `/?${params}` : "/";
+  }
 
   return (
     <>
@@ -48,12 +63,9 @@ export default async function Home({ searchParams }) {
 
       <section className="category-strip" aria-label="상품 카테고리">
         <div className="container category-list">
-          <Link href={keyword ? `/?q=${encodeURIComponent(keyword)}` : "/"} scroll={false} className={!category ? "active" : ""}>전체</Link>
+          <Link href={getCategoryHref("")} scroll={false} className={!category ? "active" : ""}>전체</Link>
           {PRODUCT_CATEGORIES.map((item) => {
-            const params = new URLSearchParams();
-            params.set("category", item);
-            if (keyword) params.set("q", keyword);
-            return <Link key={item} href={`/?${params}`} scroll={false} className={category === item ? "active" : ""}>{item}</Link>;
+            return <Link key={item} href={getCategoryHref(item)} scroll={false} className={category === item ? "active" : ""}>{item}</Link>;
           })}
         </div>
       </section>
@@ -64,7 +76,13 @@ export default async function Home({ searchParams }) {
             <p className="eyebrow">선물 큐레이션</p>
             <h2>{category || "마음을 전하기 좋은 선물"}</h2>
           </div>
-          <ProductSearchForm key={`${category}:${keyword}`} category={category} keyword={keyword} />
+          <ProductSearchForm
+            key={`${category}:${keyword}:${sort}:${excludeSoldOut}`}
+            category={category}
+            keyword={keyword}
+            sort={sort}
+            excludeSoldOut={excludeSoldOut}
+          />
         </div>
 
         {products.length ? (
@@ -75,6 +93,7 @@ export default async function Home({ searchParams }) {
                 product={product}
                 user={user}
                 isWishlisted={wishlisted.has(product.id)}
+                isOwned={product.sellerId === user?.id}
               />
             ))}
           </div>
