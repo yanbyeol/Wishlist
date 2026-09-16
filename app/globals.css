@@ -143,6 +143,27 @@ img {
   font-weight: 700;
 }
 
+.mode-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+}
+
+.mode-switch a {
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.main-nav .mode-switch a.active,
+.main-nav .mode-switch a.active:hover {
+  color: white;
+  background: var(--dark);
+}
+
 .main-nav a,
 .nav-button {
   transition: color 160ms ease, background 160ms ease;
@@ -1153,7 +1174,10 @@ img {
 
 .gift-list-copy { padding: 20px 22px 20px 0; }
 .gift-list-heading { justify-content: space-between; gap: 18px; }
+.gift-list-heading h3 { font-size: 20px; }
 .gift-list-copy blockquote { margin-top: 10px; color: var(--muted); }
+.gift-list-copy .muted-copy { margin-top: 6px; }
+.gift-box-section + .gift-box-section { margin-top: 56px; }
 
 .acceptance-grid { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); }
 
@@ -1232,6 +1256,9 @@ img {
 
   .main-nav a,
   .nav-button { font-size: 12px; }
+
+  .mode-switch { order: -1; }
+  .mode-switch a { font-size: 11px; }
 
   .header-cta { padding: 6px 11px; }
   .hero-grid { min-height: auto; padding-top: 52px; }

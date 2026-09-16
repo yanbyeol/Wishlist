@@ -85,11 +85,6 @@ export default async function Home({ searchParams }) {
           </div>
         )}
 
-        <Link href={user ? "/products/new" : "/login?callback=%2Fproducts%2Fnew"} className="add-product-banner">
-          <span className="add-icon">+</span>
-          <span><strong>새로운 선물을 소개하고 싶나요?</strong><small>로그인한 회원이라면 누구나 상품을 등록할 수 있어요.</small></span>
-          <ArrowIcon />
-        </Link>
       </section>
     </>
   );

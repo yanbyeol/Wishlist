@@ -65,9 +65,6 @@ export default async function ProductDetailPage({ params }) {
               returnPath={`/products/${product.id}`}
             />
           </div>
-          {user?.id === product.sellerId && (
-            <Link href={`/products/${product.id}/edit`} className="text-link detail-edit-link">내 상품 수정하기</Link>
-          )}
         </div>
       </div>
     </section>
