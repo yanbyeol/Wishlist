@@ -98,21 +98,16 @@ export default function SiteHeader({ isLoggedIn, userName }) {
                 {isAccountMenuOpen && (
                   <div className="account-dropdown" role="menu" aria-label="계정 메뉴">
                     {currentMode === "user" ? (
-                      <>
-                        <Link
-                          href="/seller/products"
-                          role="menuitem"
-                          onClick={() => {
-                            setCurrentMode("seller");
-                            setIsAccountMenuOpen(false);
-                          }}
-                        >
-                          판매자 모드로 전환
-                        </Link>
-                        <Link href="/mypage" role="menuitem" onClick={() => setIsAccountMenuOpen(false)}>
-                          마이페이지
-                        </Link>
-                      </>
+                      <Link
+                        href="/seller/products"
+                        role="menuitem"
+                        onClick={() => {
+                          setCurrentMode("seller");
+                          setIsAccountMenuOpen(false);
+                        }}
+                      >
+                        판매자 모드로 전환
+                      </Link>
                     ) : (
                       <>
                         <Link

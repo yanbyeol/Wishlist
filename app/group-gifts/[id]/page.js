@@ -103,10 +103,31 @@ export default async function GroupGiftPage({ params }) {
             {groupGift.contributions.length > 0 ? (
               <ul>
                 {groupGift.contributions.map((contribution) => (
-                  <li key={contribution.id}>
-                    <span className="contributor-avatar">{contribution.nickname.slice(0, 1)}</span>
-                    <div><strong>{contribution.nickname}</strong><p>{contribution.message || "함께 선물했어요."}</p></div>
-                    <span>{formatWon(contribution.amount)}</span>
+                  <li
+                    key={contribution.id}
+                    className={groupGift.status === "completed" ? "completed-contribution" : undefined}
+                  >
+                    {groupGift.status !== "completed" && (
+                      <span className="contributor-avatar">{contribution.nickname.slice(0, 1)}</span>
+                    )}
+                    <div>
+                      <strong>{contribution.nickname}</strong>
+                      {groupGift.status === "completed" && (
+                        <div
+                          className="contribution-progress-track"
+                          role="img"
+                          aria-label={`${contribution.nickname}님의 기여도`}
+                        >
+                          <span
+                            style={{
+                              width: `${Math.min(100, (contribution.amount / groupGift.targetAmount) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      )}
+                      <p>{contribution.message || "함께 선물했어요."}</p>
+                    </div>
+                    {groupGift.status !== "completed" && <span>{formatWon(contribution.amount)}</span>}
                   </li>
                 ))}
               </ul>

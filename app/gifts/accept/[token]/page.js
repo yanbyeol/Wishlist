@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import AcceptGiftForm from "@/app/gifts/accept/[token]/accept-gift-form";
 import ProductImage from "@/components/product-image";
-import { getDefaultAddress } from "@/lib/addresses";
+import { listAddresses } from "@/lib/addresses";
 import { getGiftByAcceptanceToken } from "@/lib/orders";
 import { requireUser } from "@/lib/session";
 
@@ -19,7 +19,7 @@ export default async function AcceptGiftPage({ params }) {
     notFound();
   }
 
-  const address = await getDefaultAddress(user.id);
+  const addresses = await listAddresses(user.id);
 
   return (
     <section className="container page-section acceptance-grid">
@@ -28,6 +28,7 @@ export default async function AcceptGiftPage({ params }) {
         <p>당신을 위한 축하 카드</p>
         <h1>{gift.card.title}</h1>
         <blockquote>{gift.card.message}</blockquote>
+        <small>보낸 사람 · {gift.sender?.name ?? "친구"}</small>
       </div>
       <div>
         <div className="info-card acceptance-product">
@@ -50,7 +51,7 @@ export default async function AcceptGiftPage({ params }) {
               <h2>배송지를 확인해 주세요</h2>
               <p>입력한 주소는 이 목업 주문의 배송 정보로만 사용됩니다.</p>
             </div>
-            <AcceptGiftForm token={token} address={address} userName={user.name} />
+            <AcceptGiftForm token={token} addresses={addresses} userName={user.name} />
           </>
         )}
       </div>

@@ -10,6 +10,7 @@ import {
   isValidEmail,
   isValidImageUrl,
   isValidOtpCode,
+  parseAddressFormData,
   parseNonNegativeInteger,
   parsePositiveInteger,
 } from "../lib/utils/validation.js";
@@ -52,4 +53,26 @@ test("이메일 간편 인증은 숫자 6자리만 허용한다", () => {
   assert.equal(isValidOtpCode("012345"), true);
   assert.equal(isValidOtpCode("12345"), false);
   assert.equal(isValidOtpCode("12345a"), false);
+});
+
+test("배송지 검증 실패 시 정리된 입력값을 함께 반환한다", () => {
+  const values = new Map([
+    ["label", " 집 "],
+    ["recipientName", " 김민지 "],
+    ["phone", "잘못된 번호"],
+    ["postalCode", "12345"],
+    ["address1", "테스트시 선물로 123"],
+    ["address2", "101호"],
+    ["isDefault", "on"],
+  ]);
+  const parsed = parseAddressFormData(
+    { get: (name) => values.get(name) },
+    { includeLabel: true },
+  );
+
+  assert.equal(parsed.error, "연락처를 숫자와 하이픈을 사용해 입력해 주세요.");
+  assert.equal(parsed.fields.label, "집");
+  assert.equal(parsed.fields.recipientName, "김민지");
+  assert.equal(parsed.fields.phone, "잘못된 번호");
+  assert.equal(parsed.fields.isDefault, true);
 });
