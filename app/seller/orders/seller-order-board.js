@@ -9,7 +9,7 @@ import { ORDER_STATUS_OPTIONS } from "@/lib/constants";
 import { getSellerOrderStatuses } from "@/lib/seller-order-filter";
 import { formatDate, formatWon, getOrderStatusLabel } from "@/lib/utils/format";
 import OrderStatusCheckboxes from "./order-status-checkboxes";
-import styles from "./order-filter.module.css";
+import styles from "../seller-filter.module.css";
 
 const notices = {
   updated: "배송 상태를 변경했습니다.",

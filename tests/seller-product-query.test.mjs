@@ -213,7 +213,7 @@ function createBoard(initialProducts, initialSearch = "") {
     "./actions": { querySellerProductsAction: (statuses) => new Promise((resolve, reject) => requests.push({ statuses: Array.from(statuses), resolve, reject })) },
     "@/components/empty-state": EmptyState, "@/components/product-image": () => {}, "@/components/status-badge": () => {},
     "@/lib/constants": { SELLER_PRODUCT_STATUS_OPTIONS }, "@/lib/seller-product-filter": { getSellerProductStatuses },
-    "@/lib/utils/format": { formatWon }, "./product-status-checkboxes": Checkboxes, "./product-filter.module.css": styles,
+    "@/lib/utils/format": { formatWon }, "./product-status-checkboxes": Checkboxes, "../seller-filter.module.css": styles,
   }, { window }).default;
 
   function render(nextProps = props) {
@@ -335,7 +335,7 @@ test("상품 상태 체크박스는 마지막 해제를 막고 URL에서 오래�
   let submissions = 0;
   const Checkboxes = loadSource("app/seller/products/product-status-checkboxes.js", {
     "react/jsx-runtime": jsxRuntime, "@/lib/constants": { SELLER_PRODUCT_STATUS_OPTIONS },
-    "@/lib/seller-product-filter": { getSellerProductsReturnPath }, "./product-filter.module.css": styles,
+    "@/lib/seller-product-filter": { getSellerProductsReturnPath }, "../seller-filter.module.css": styles,
   }, {
     window: { history: { pushState: (...args) => history.push(args) }, location: { hash: "#products" } },
     FormData: class { constructor(form) { this.form = form; } getAll() { return this.form.statuses; } },

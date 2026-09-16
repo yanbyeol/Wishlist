@@ -2,7 +2,7 @@
 
 import { ORDER_STATUS_OPTIONS } from "@/lib/constants";
 import { getSellerOrdersReturnPath } from "@/lib/seller-order-filter";
-import styles from "./order-filter.module.css";
+import styles from "../seller-filter.module.css";
 
 export default function OrderStatusCheckboxes({ selectedStatuses }) {
   function changeStatusFilter(event) {

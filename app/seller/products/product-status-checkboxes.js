@@ -2,7 +2,7 @@
 
 import { SELLER_PRODUCT_STATUS_OPTIONS } from "@/lib/constants";
 import { getSellerProductsReturnPath } from "@/lib/seller-product-filter";
-import styles from "./product-filter.module.css";
+import styles from "../seller-filter.module.css";
 
 export default function ProductStatusCheckboxes({ selectedStatuses }) {
   function changeStatusFilter(event) {

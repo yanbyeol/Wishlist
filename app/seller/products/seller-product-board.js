@@ -11,7 +11,7 @@ import { SELLER_PRODUCT_STATUS_OPTIONS } from "@/lib/constants";
 import { getSellerProductStatuses } from "@/lib/seller-product-filter";
 import { formatWon } from "@/lib/utils/format";
 import ProductStatusCheckboxes from "./product-status-checkboxes";
-import styles from "./product-filter.module.css";
+import styles from "../seller-filter.module.css";
 
 const notices = {
   deleted: "상품을 삭제했습니다.",

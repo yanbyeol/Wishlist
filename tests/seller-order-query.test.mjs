@@ -214,7 +214,7 @@ function createBoard(initialOrders, initialSearch = "") {
     "@/components/empty-state": () => {}, "@/components/status-badge": () => {},
     "@/lib/constants": { ORDER_STATUS_OPTIONS }, "@/lib/seller-order-filter": { getSellerOrderStatuses },
     "@/lib/utils/format": { formatDate, formatWon, getOrderStatusLabel },
-    "./order-status-checkboxes": Checkboxes, "./order-filter.module.css": styles,
+    "./order-status-checkboxes": Checkboxes, "../seller-filter.module.css": styles,
   }, { window }).default;
   function render(nextProps = props) {
     props = nextProps;
@@ -313,7 +313,7 @@ test("체크박스는 마지막 선택 해제를 막고 유효한 변경만 주�
   let submissions = 0;
   const Checkboxes = loadSource("app/seller/orders/order-status-checkboxes.js", {
     "react/jsx-runtime": jsxRuntime, "@/lib/constants": { ORDER_STATUS_OPTIONS },
-    "@/lib/seller-order-filter": { getSellerOrdersReturnPath }, "./order-filter.module.css": styles,
+    "@/lib/seller-order-filter": { getSellerOrdersReturnPath }, "../seller-filter.module.css": styles,
   }, {
     window: { history: { pushState: (...args) => history.push(args) }, location: { hash: "#orders" } },
     FormData: class { constructor(form) { this.form = form; } getAll() { return this.form.statuses; } },
