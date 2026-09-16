@@ -143,27 +143,6 @@ img {
   font-weight: 700;
 }
 
-.mode-switch {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: white;
-}
-
-.mode-switch a {
-  padding: 5px 10px;
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.main-nav .mode-switch a.active,
-.main-nav .mode-switch a.active:hover {
-  color: white;
-  background: var(--dark);
-}
-
 .main-nav a,
 .nav-button {
   transition: color 160ms ease, background 160ms ease;
@@ -177,6 +156,91 @@ img {
   background: transparent;
   font-weight: 700;
 }
+
+.account-menu {
+  position: relative;
+  flex: none;
+}
+
+.account-menu-trigger {
+  min-height: 42px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.72);
+  font-weight: 800;
+}
+
+.account-menu-trigger:hover,
+.account-menu-trigger:focus-visible {
+  border-color: #d8c8c5;
+  background: white;
+}
+
+.account-user-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-trigger .status-badge {
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.account-menu-arrow {
+  color: var(--muted);
+  font-size: 11px;
+  transition: transform 160ms ease;
+}
+
+.account-menu-arrow.open { transform: rotate(180deg); }
+
+.account-dropdown {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 9px);
+  right: 0;
+  width: max-content;
+  min-width: 190px;
+  max-width: calc(100vw - 28px);
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+
+.account-dropdown a,
+.account-dropdown button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 750;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.account-dropdown a:hover,
+.account-dropdown button:hover,
+.account-dropdown a:focus-visible,
+.account-dropdown button:focus-visible {
+  color: var(--primary-dark);
+  background: var(--surface-soft);
+}
+
+.account-dropdown form { width: 100%; }
 
 .header-cta {
   padding: 9px 16px;
@@ -1257,8 +1321,10 @@ img {
   .main-nav a,
   .nav-button { font-size: 12px; }
 
-  .mode-switch { order: -1; }
-  .mode-switch a { font-size: 11px; }
+  .account-user-name { max-width: 80px; }
+  .account-menu-trigger { min-height: 40px; padding: 6px 9px; }
+  .main-nav .account-dropdown a,
+  .account-dropdown button { font-size: 14px; }
 
   .header-cta { padding: 6px 11px; }
   .hero-grid { min-height: auto; padding-top: 52px; }

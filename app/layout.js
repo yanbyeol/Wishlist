@@ -18,7 +18,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="ko" data-scroll-behavior="smooth">
       <body>
-        <SiteHeader isLoggedIn={Boolean(user)} />
+        <SiteHeader isLoggedIn={Boolean(user)} userName={user?.name ?? ""} />
         <main className="site-main">{children}</main>
         <footer className="site-footer">
           <div className="container footer-inner">
