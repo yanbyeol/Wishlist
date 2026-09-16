@@ -123,7 +123,7 @@ export default function SellerProductBoard({ initialProducts, initialStatuses, i
                 <StatusBadge tone={getProductStatusTone(product.status)}>{getProductStatusLabel(product.status)}</StatusBadge>
                 {product.status !== "archived" ? (
                   <div className="inline-actions item-actions">
-                    <Link href={`/products/${product.id}`} className="text-link">보기</Link>
+                    <Link href={`/seller/products/${product.id}`} className="text-link">미리보기</Link>
                     <Link href={`/products/${product.id}/edit`} className="text-link">수정</Link>
                     <DeleteProductForm productId={product.id} filterStatuses={selectedStatuses} />
                   </div>

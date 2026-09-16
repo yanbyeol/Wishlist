@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { getModeFromPath } from "../components/site-header-mode.js";
 
 test("판매 홈과 판매자 하위 경로를 판매자 모드로 판별한다", () => {
-  for (const path of ["/seller", "/seller/", "/seller/products", "/seller/orders", "/seller/orders/123"]) {
+  for (const path of ["/seller", "/seller/", "/seller/products", "/seller/products/123", "/seller/orders", "/seller/orders/123"]) {
     assert.equal(getModeFromPath(path), "seller", path);
   }
 });

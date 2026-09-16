@@ -75,6 +75,7 @@ export default function SiteHeader({ isLoggedIn, userName }) {
   const pathname = usePathname() ?? "/";
   const currentMode = getModeFromPath(pathname);
   const homePath = currentMode === "seller" ? "/seller" : "/";
+  const isSellerProductsPath = pathname === "/seller/products" || pathname.startsWith("/seller/products/");
 
   return (
     <header className="site-header">
@@ -97,7 +98,7 @@ export default function SiteHeader({ isLoggedIn, userName }) {
               ) : (
                 <>
                   <Link href="/seller" className="seller-nav-link" aria-current={pathname === "/seller" || pathname === "/seller/" ? "page" : undefined}>판매 홈</Link>
-                  <Link href="/seller/products" className="seller-nav-link" aria-current={pathname === "/seller/products" ? "page" : undefined}>상품 관리</Link>
+                  <Link href="/seller/products" className="seller-nav-link" aria-current={isSellerProductsPath ? "page" : undefined}>상품 관리</Link>
                   <Link href="/seller/orders" className="seller-nav-link" aria-current={pathname === "/seller/orders" ? "page" : undefined}>주문 관리</Link>
                   <Link href="/products/new" className="seller-nav-link" aria-current={pathname === "/products/new" ? "page" : undefined}>상품 등록</Link>
                 </>

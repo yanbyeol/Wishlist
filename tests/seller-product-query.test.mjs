@@ -183,6 +183,7 @@ function createBoard(initialProducts, initialSearch = "") {
   let tree;
   let props = { initialProducts, initialStatuses: ["active", "sold_out", "archived"], initialNotice: "" };
   const window = { location: { pathname: "/seller/products", search: initialSearch, hash: "" }, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
+  function Link() {}
   function Checkboxes() {}
   function DeleteForm() {}
   function EmptyState() {}
@@ -207,7 +208,7 @@ function createBoard(initialProducts, initialSearch = "") {
     startTransition(action) { tasks.push(Promise.resolve(action())); },
   };
   const Board = loadSource("app/seller/products/seller-product-board.js", {
-    react, "react/jsx-runtime": jsxRuntime, "next/link": () => {},
+    react, "react/jsx-runtime": jsxRuntime, "next/link": Link,
     "./delete-product-form": DeleteForm,
     "./actions": { querySellerProductsAction: (statuses) => new Promise((resolve, reject) => requests.push({ statuses: Array.from(statuses), resolve, reject })) },
     "@/components/empty-state": EmptyState, "@/components/product-image": () => {}, "@/components/status-badge": () => {},
@@ -234,6 +235,7 @@ function createBoard(initialProducts, initialSearch = "") {
     pop(search) { window.location.search = search; listeners.get("popstate")(); render(); },
     selected: () => findElements(tree, (node) => node.type === Checkboxes)[0].props.selectedStatuses,
     deleteFilters: () => findElements(tree, (node) => node.type === DeleteForm)[0]?.props.filterStatuses ?? [],
+    previewLink: () => findElements(tree, (node) => node.type === Link && node.props.children === "미리보기")[0]?.props,
     cards: () => findElements(tree, (node) => node.type === "article"),
     emptyState: () => findElements(tree, (node) => node.type === EmptyState)[0]?.props,
     feedback: () => findElements(tree, (node) => node.props.className?.startsWith("feedback"))[0].props.children,
@@ -247,6 +249,11 @@ function displayedProduct(name = "기존 상품", status = "active") {
     quantity: status === "sold_out" ? 0 : 3, imageUrl: "/images/test.jpg",
   };
 }
+
+test("상품 관리의 미리보기는 판매자 전용 경로로 이동한다", () => {
+  const board = createBoard([displayedProduct()]);
+  assert.equal(board.previewLink().href, "/seller/products/000000000000000000000001");
+});
 
 test("상품 부분 조회 중 기존 목록을 유지하고 오류 후에도 목록을 유지한다", async () => {
   const board = createBoard([displayedProduct()]);
