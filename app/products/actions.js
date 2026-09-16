@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
+import { getSellerProductsReturnPath } from "@/lib/seller-product-filter";
 import {
   createProduct,
   deleteProductOwned,
@@ -167,15 +168,16 @@ export async function updateProductAction(productId, previousState, formData) {
 
 export async function deleteProductAction(formData) {
   const productId = String(formData.get("productId") ?? "");
+  const filterStatuses = formData.getAll("filterStatus");
   const user = await requireUser("/seller/products");
   const result = await deleteProductOwned(productId, user.id);
 
   if (!result.deleted) {
-    redirect("/seller/products?notice=not-found");
+    redirect(getSellerProductsReturnPath(filterStatuses, "not-found"));
   }
 
   revalidatePath("/");
   revalidatePath("/wishlist");
   revalidatePath("/seller/products");
-  redirect(`/seller/products?notice=${result.archived ? "archived" : "deleted"}`);
+  redirect(getSellerProductsReturnPath(filterStatuses, result.archived ? "archived" : "deleted"));
 }
