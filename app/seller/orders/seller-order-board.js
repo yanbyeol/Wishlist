@@ -79,10 +79,12 @@ export default function SellerOrderBoard({ initialOrders, initialStatuses, initi
     <>
       <form ref={filterForm} action="/seller/orders" method="get" onSubmit={submitFilter} className={styles.filter}>
         <OrderStatusCheckboxes selectedStatuses={selectedStatuses} />
-        <button className="button button-dark" type="submit">조회</button>
-        <p id="order-filter-help" className={styles.help}>선택한 상태의 주문을 바로 조회합니다. 최소 1개 상태를 선택해야 합니다.</p>
-        <p className={`${styles.feedback}${error ? " error-message" : ""}`} role={error ? "alert" : "status"}>
-          {isLoading ? "조회 중…" : error}
+        <button className={`button button-primary ${styles.queryButton}`} type="submit">다시 조회</button>
+        <p id="order-filter-help" className={styles.help}>
+          {!isLoading && !error && "최소 1개 상태를 선택해 주세요."}
+          <span className={`${styles.feedback}${error ? " error-message" : ""}`} role={error ? "alert" : "status"}>
+            {isLoading ? "조회 중…" : error}
+          </span>
         </p>
       </form>
       {notice && <p className="notice-banner">{notice}</p>}
