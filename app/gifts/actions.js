@@ -4,38 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { acceptGiftWithAddress, getGiftByAcceptanceToken } from "@/lib/orders";
 import { requireUser } from "@/lib/session";
-
-function readShippingAddress(formData) {
-  const fields = {
-    recipientName: String(formData.get("recipientName") ?? "").trim(),
-    phone: String(formData.get("phone") ?? "").trim(),
-    postalCode: String(formData.get("postalCode") ?? "").trim(),
-    address1: String(formData.get("address1") ?? "").trim(),
-    address2: String(formData.get("address2") ?? "").trim(),
-  };
-
-  if (fields.recipientName.length < 2 || fields.recipientName.length > 30) {
-    return { error: "받는 분 이름은 2자 이상 30자 이하로 입력해 주세요." };
-  }
-
-  if (!/^[0-9+() -]{8,20}$/.test(fields.phone)) {
-    return { error: "연락처를 숫자와 하이픈을 사용해 입력해 주세요." };
-  }
-
-  if (!/^[0-9A-Za-z -]{3,10}$/.test(fields.postalCode)) {
-    return { error: "우편번호를 확인해 주세요." };
-  }
-
-  if (fields.address1.length < 4 || fields.address1.length > 100) {
-    return { error: "기본 주소는 4자 이상 100자 이하로 입력해 주세요." };
-  }
-
-  if (fields.address2.length > 100) {
-    return { error: "상세 주소는 100자 이하로 입력해 주세요." };
-  }
-
-  return { fields };
-}
+import { parseAddressFormData } from "@/lib/utils/validation";
 
 export async function acceptGiftAction(token, previousState, formData) {
   const callback = `/gifts/accept/${token}`;
@@ -50,10 +19,10 @@ export async function acceptGiftAction(token, previousState, formData) {
     return { message: "이미 배송지를 입력한 선물입니다." };
   }
 
-  const parsed = readShippingAddress(formData);
+  const parsed = parseAddressFormData(formData);
 
   if (parsed.error) {
-    return { message: parsed.error };
+    return { message: parsed.error, fields: parsed.fields };
   }
 
   let order;
@@ -61,7 +30,10 @@ export async function acceptGiftAction(token, previousState, formData) {
   try {
     order = await acceptGiftWithAddress(token, user.id, parsed.fields);
   } catch {
-    return { message: "배송지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요." };
+    return {
+      message: "배송지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      fields: parsed.fields,
+    };
   }
 
   if (!order) {

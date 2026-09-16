@@ -33,6 +33,7 @@ export default async function WishlistPage() {
           <ShareButton
             path={`/shared/${wishlist.shareToken}`}
             title={wishlist.title}
+            showCopyButton
           />
         )}
       </div>
@@ -57,13 +58,14 @@ export default async function WishlistPage() {
             })}
           </div>
           <div className="centered-action">
-            <Link href="/" className="button button-secondary">+ 상품 추가하기</Link>
+            <Link href="/#products" className="button button-secondary">+ 상품 추가하기</Link>
           </div>
         </>
       ) : (
         <EmptyState
           title="아직 담아 둔 상품이 없어요"
           description="상품을 둘러보고 받고 싶은 선물을 위시리스트에 추가해 보세요."
+          href="/#products"
           action="위시리스트에 상품 추가하기"
         />
       )}
