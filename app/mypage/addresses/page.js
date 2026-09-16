@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import AddressForm from "@/app/mypage/addresses/address-form";
 import {
@@ -12,6 +13,7 @@ export const metadata = { title: "배송지 관리" };
 
 const notices = {
   created: "배송지를 저장했습니다.",
+  updated: "배송지를 수정했습니다.",
   deleted: "배송지를 삭제했습니다.",
   default: "기본 배송지를 변경했습니다.",
   "not-found": "배송지를 찾을 수 없습니다.",
@@ -22,6 +24,8 @@ export default async function AddressesPage({ searchParams }) {
   const user = await requireUser("/mypage/addresses");
   const [addresses, query] = await Promise.all([listAddresses(user.id), searchParams]);
   const notice = typeof query.notice === "string" ? notices[query.notice] : "";
+  const editId = typeof query.edit === "string" ? query.edit : "";
+  const editingAddress = addresses.find((address) => address.id === editId) ?? null;
 
   return (
     <section className="container page-section management-grid">
@@ -43,6 +47,7 @@ export default async function AddressesPage({ searchParams }) {
               <p>{address.phone}</p>
               <p>({address.postalCode}) {address.address1} {address.address2}</p>
               <div className="inline-actions">
+                <Link href={`/mypage/addresses?edit=${address.id}`} className="text-button">수정</Link>
                 {!address.isDefault && (
                   <form action={setDefaultAddressAction}>
                     <input type="hidden" name="addressId" value={address.id} />
@@ -59,8 +64,12 @@ export default async function AddressesPage({ searchParams }) {
         </div>
       </div>
       <aside>
-        <h2 className="aside-title">새 배송지 추가</h2>
-        <AddressForm userName={user.name} />
+        <h2 className="aside-title">{editingAddress ? "배송지 수정" : "새 배송지 추가"}</h2>
+        <AddressForm
+          key={editingAddress?.id ?? "new-address"}
+          userName={user.name}
+          address={editingAddress}
+        />
       </aside>
     </section>
   );
