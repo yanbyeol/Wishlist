@@ -111,7 +111,7 @@ export default function SellerOrderBoard({ initialOrders, initialStatuses, initi
                   <div><span>배송지</span><strong>{order.shippingAddress?.recipientName ?? "입력 대기"}</strong><small>{order.shippingAddress ? `(${order.shippingAddress.postalCode}) ${order.shippingAddress.address1} ${order.shippingAddress.address2}` : "수락 링크에서 입력 예정"}</small></div>
                 </div>
                 <div className="seller-order-actions">
-                  <Link href={`/orders/${order.id}`} className="text-link">주문 상세</Link>
+                  <Link href={`/orders/${order.id}?view=seller`} className="text-link">주문 상세</Link>
                   <form action={updateOrderStatusAction}>
                     <input type="hidden" name="orderId" value={order.id} />
                     {selectedStatuses.map((status) => <input type="hidden" name="filterStatus" value={status} key={status} />)}

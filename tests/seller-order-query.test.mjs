@@ -183,6 +183,7 @@ function createBoard(initialOrders, initialSearch = "") {
   let cursor = 0;
   let tree;
   let props = { initialOrders, initialStatuses: ["awaiting_address", "preparing"], initialNotice: "" };
+  function Link() {}
   const window = { location: { pathname: "/seller/orders", search: initialSearch, hash: "" }, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
   function Checkboxes() {}
   const react = {
@@ -206,7 +207,7 @@ function createBoard(initialOrders, initialSearch = "") {
     startTransition(action) { tasks.push(Promise.resolve(action())); },
   };
   const Board = loadSource("app/seller/orders/seller-order-board.js", {
-    react, "react/jsx-runtime": jsxRuntime, "next/link": () => {},
+    react, "react/jsx-runtime": jsxRuntime, "next/link": Link,
     "./actions": {
       querySellerOrdersAction: (statuses) => new Promise((resolve, reject) => requests.push({ statuses: Array.from(statuses), resolve, reject })),
       updateOrderStatusAction: () => {},
@@ -235,6 +236,7 @@ function createBoard(initialOrders, initialSearch = "") {
     selected: () => findElements(tree, (node) => node.type === Checkboxes)[0].props.selectedStatuses,
     saveFilters: () => findElements(tree, (node) => node.type === "input" && node.props.name === "filterStatus").map((node) => node.props.value),
     cards: () => findElements(tree, (node) => node.type === "article"),
+    detailPaths: () => findElements(tree, (node) => node.type === Link).map((node) => node.props.href),
     feedback: () => findElements(tree, (node) => node.props.className?.startsWith("feedback"))[0].props.children,
     unmount: () => cells.forEach((cell) => cell.cleanup?.()),
   };
@@ -243,6 +245,11 @@ function createBoard(initialOrders, initialSearch = "") {
 function displayedOrder(name = "기존 주문") {
   return { id: "000000000000000000000001", status: "preparing", createdAt: "2026-09-16T00:00:00.000Z", productSnapshot: { name }, totalAmount: 1000, shippingAddress: null };
 }
+
+test("판매자 주문 상세 링크는 판매자 관점과 배송지 조회 권한을 유지한다", () => {
+  const board = createBoard([displayedOrder()]);
+  assert.deepEqual(board.detailPaths(), ["/orders/000000000000000000000001?view=seller"]);
+});
 
 test("부분 조회 중 기존 목록을 유지하고 오류·통신 실패 후에도 목록을 유지한다", async () => {
   const board = createBoard([displayedOrder()]);

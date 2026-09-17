@@ -15,11 +15,18 @@ function statusTone(status) {
   return "neutral";
 }
 
-export default async function OrderDetailPage({ params }) {
+function getOrderView(value) {
+  return ["sent", "seller"].includes(value) ? value : "";
+}
+
+export default async function OrderDetailPage({ params, searchParams }) {
   await connection();
   const { id } = await params;
-  const user = await requireUser(`/orders/${id}`);
-  const order = await getOrderDetails(id);
+  const query = await searchParams;
+  const orderView = getOrderView(query.view);
+  const callbackPath = orderView ? `/orders/${id}?view=${orderView}` : `/orders/${id}`;
+  const user = await requireUser(callbackPath);
+  const order = await getOrderDetails(id, user.id, orderView);
 
   if (
     !order ||

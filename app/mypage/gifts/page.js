@@ -71,7 +71,7 @@ function SentGiftList({ orders }) {
             <p className="muted-copy">받는 사람 · {order.recipient?.name ?? "WishMate 회원"}</p>
             {order.card && <blockquote>“{order.card.message}”</blockquote>}
             <div className="inline-actions">
-              <Link href={`/orders/${order.id}`} className="text-link">주문 자세히 보기</Link>
+              <Link href={`/orders/${order.id}?view=sent`} className="text-link">주문 자세히 보기</Link>
               {order.status === "awaiting_address" && order.card?.acceptancePath && (
                 <ShareButton
                   path={order.card.acceptancePath}
