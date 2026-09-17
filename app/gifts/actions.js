@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { acceptGiftWithAddress, getGiftByAcceptanceToken } from "@/lib/orders";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import { parseAddressFormData } from "@/lib/utils/validation";
 
 export async function acceptGiftAction(token, previousState, formData) {
   const callback = `/gifts/accept/${token}`;
-  const user = await requireUser(callback);
+  const user = await requireMember(callback);
   const gift = await getGiftByAcceptanceToken(token);
 
   if (!gift || gift.order.recipientId !== user.id) {

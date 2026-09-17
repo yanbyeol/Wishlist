@@ -51,7 +51,12 @@ export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" })
   );
 }
 
-export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
+export function GuestOtpForm({
+  groupGiftId,
+  returnTo = "",
+  description = "인증 후 이 공동선물에 참여하거나 이전 참여 내역을 확인할 수 있어요.",
+  verifyLabel = "인증하고 참여하기",
+}) {
   const requestAction = requestGroupGiftOtpAction.bind(null, groupGiftId);
   const verifyAction = verifyGroupGiftOtpAction.bind(null, groupGiftId);
   const [requestState, requestFormAction, requestPending] = useActionState(
@@ -67,7 +72,7 @@ export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
     <div className="guest-otp-section">
       <div>
         <h2>이메일로 간편 인증</h2>
-        <p>인증 후 같은 이메일 계정으로 모든 선물 기능을 이용할 수 있어요.</p>
+        <p>{description}</p>
       </div>
       <form action={requestFormAction} className="stack-form">
         <label className="field">
@@ -114,10 +119,11 @@ export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
             {verifyState?.message}
           </p>
           <button className="button button-primary button-full" type="submit" disabled={verifyPending}>
-            {verifyPending ? "인증하는 중..." : "인증하고 참여하기"}
+            {verifyPending ? "인증하는 중..." : verifyLabel}
           </button>
         </form>
       )}
+      <p className="muted-copy">간편 인증은 선물 기능에만 사용되며 회원 전용 기능은 이용할 수 없습니다.</p>
     </div>
   );
 }

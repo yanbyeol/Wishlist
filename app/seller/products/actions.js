@@ -2,10 +2,10 @@
 
 import { listProductsBySeller } from "@/lib/products";
 import { getSellerProductStatuses } from "@/lib/seller-product-filter";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export async function querySellerProductsAction(statuses) {
-  const user = await requireUser("/seller/products");
+  const user = await requireMember("/seller/products");
   const selectedStatuses = getSellerProductStatuses(statuses);
 
   try {

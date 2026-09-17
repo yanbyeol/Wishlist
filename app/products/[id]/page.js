@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import ProductDetailView from "@/components/product-detail-view";
 import { getProductById } from "@/lib/products";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentMember } from "@/lib/session";
 import { findUserById } from "@/lib/users";
 import { getWishlistedProductIds } from "@/lib/wishlists";
 
@@ -15,7 +15,7 @@ export default async function ProductDetailPage({ params }) {
     notFound();
   }
 
-  const user = await getCurrentUser();
+  const user = await getCurrentMember();
   const [seller, wishlistedIds] = await Promise.all([
     findUserById(product.sellerId),
     user ? getWishlistedProductIds(user.id) : [],

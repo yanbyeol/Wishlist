@@ -137,7 +137,7 @@ function loadOrderAction(startedGroupGift) {
         quantity: 2,
       }),
     },
-    "@/lib/session": { requireUser: async () => ({ id: "sender-id" }) },
+    "@/lib/session": { requireGiftUser: async () => ({ id: "sender-id" }) },
     "@/lib/users": {
       findUserByEmail: async () => null,
       findUserById: async () => ({ id: "recipient-id" }),
@@ -204,7 +204,7 @@ function findElements(tree, predicate) {
   return found;
 }
 
-function loadOrderPage(startedGroupGift) {
+function loadOrderPage(startedGroupGift, currentUser = { id: "sender-id" }) {
   const calls = { groupGiftQueries: [], redirects: [] };
   const Page = loadSource("app/orders/new/page.js", {
     "next/server": { connection: async () => {} },
@@ -216,6 +216,7 @@ function loadOrderPage(startedGroupGift) {
       },
     },
     "@/app/orders/new/order-form": "OrderForm",
+    "@/components/gift-email-auth-form": "GiftEmailAuthForm",
     "@/lib/group-gifts": {
       async findStartedGroupGiftForProduct(recipientId, productId) {
         calls.groupGiftQueries.push({ recipientId, productId });
@@ -225,7 +226,7 @@ function loadOrderPage(startedGroupGift) {
     "@/lib/products": {
       getProductById: async () => ({ id: "product-id", status: "active" }),
     },
-    "@/lib/session": { requireUser: async () => ({ id: "sender-id" }) },
+    "@/lib/session": { getCurrentUser: async () => currentUser },
     "@/lib/users": { findUserById: async () => ({ id: "recipient-id" }) },
     "@/lib/utils/format": {
       sanitizeCallbackPath: (value, fallback) => String(value || fallback),
@@ -255,4 +256,23 @@ test("주문 화면도 최초 참여 전에는 열리고 참여 후에는 공동
     /REDIRECT:\/group-gifts\/gift-id/,
   );
   assert.deepEqual(afterStart.calls.redirects, ["/group-gifts/gift-id"]);
+});
+
+test("비로그인 혼자 선물 사용자는 주문 화면 안에서만 이메일 인증한다", async () => {
+  const { Page, calls } = loadOrderPage(null, null);
+  const tree = await Page({
+    searchParams: Promise.resolve({
+      product: "product-id",
+      recipient: "recipient-id",
+      from: "/shared/shared-token/products/product-id",
+    }),
+  });
+  const authForm = findElements(tree, (node) => node.type === "GiftEmailAuthForm")[0];
+
+  assert.equal(
+    authForm.props.callback,
+    "/orders/new?product=product-id&from=%2Fshared%2Fshared-token%2Fproducts%2Fproduct-id&recipient=recipient-id",
+  );
+  assert.equal(findElements(tree, (node) => node.type === "OrderForm").length, 0);
+  assert.deepEqual(calls.groupGiftQueries, []);
 });

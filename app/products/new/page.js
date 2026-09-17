@@ -1,12 +1,12 @@
 import { connection } from "next/server";
 import ProductForm from "@/app/products/product-form";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export const metadata = { title: "상품 등록" };
 
 export default async function NewProductPage() {
   await connection();
-  await requireUser("/products/new");
+  await requireMember("/products/new");
 
   return (
     <section className="container narrow-page page-section">

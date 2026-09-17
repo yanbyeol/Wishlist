@@ -5,7 +5,7 @@ import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
 import { listReceivedOrders, listSentOrders } from "@/lib/orders";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import { formatDate, getOrderStatusLabel } from "@/lib/utils/format";
 
 export const metadata = { title: "선물함" };
@@ -90,7 +90,7 @@ function SentGiftList({ orders }) {
 
 export default async function ReceivedGiftsPage() {
   await connection();
-  const user = await requireUser("/mypage/gifts");
+  const user = await requireMember("/mypage/gifts");
   const [receivedOrders, sentOrders] = await Promise.all([
     listReceivedOrders(user.id),
     listSentOrders(user.id),

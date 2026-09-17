@@ -5,11 +5,11 @@ import { redirect } from "next/navigation";
 import { ORDER_STATUS_OPTIONS } from "@/lib/constants";
 import { listSellerOrders, updateSellerOrderStatus } from "@/lib/orders";
 import { getSellerOrderStatuses, getSellerOrdersReturnPath } from "@/lib/seller-order-filter";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export async function querySellerOrdersAction(statuses) {
   // 인증 리다이렉트는 조회 오류로 처리하지 않습니다.
-  const user = await requireUser("/seller/orders");
+  const user = await requireMember("/seller/orders");
   const selectedStatuses = getSellerOrderStatuses(statuses);
 
   try {
@@ -21,7 +21,7 @@ export async function querySellerOrdersAction(statuses) {
 }
 
 export async function updateOrderStatusAction(formData) {
-  const user = await requireUser("/seller/orders");
+  const user = await requireMember("/seller/orders");
   const orderId = String(formData.get("orderId") ?? "");
   const status = String(formData.get("status") ?? "");
   const filterStatuses = formData.getAll("filterStatus");

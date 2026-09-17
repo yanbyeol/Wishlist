@@ -38,13 +38,6 @@ export default async function SharedProductPage({ params }) {
   const groupGiftPath = openGroupGift
     ? getGroupGiftPath(openGroupGift.id, sharedWishlistPath)
     : `/group-gifts/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}&returnTo=${encodeURIComponent(sharedWishlistPath)}`;
-  const authenticatedOrderPath = user
-    ? orderPath
-    : `/login?callback=${encodeURIComponent(orderPath)}`;
-  const authenticatedGroupPath = openGroupGift || user
-    ? groupGiftPath
-    : `/login?callback=${encodeURIComponent(groupGiftPath)}`;
-
   return (
     <section className="container page-section">
       <Link href={`/shared/${token}`} className="back-link">← 위시리스트로 돌아가기</Link>
@@ -71,11 +64,11 @@ export default async function SharedProductPage({ params }) {
               <button className="button button-disabled" disabled>현재 품절된 상품입니다</button>
             ) : (
               <>
-                <Link href={authenticatedOrderPath} className="button button-primary">
+                <Link href={orderPath} className="button button-primary">
                   <GiftIcon size={20} /> {isOwner ? "나에게 선물하기" : "혼자 선물하기"}
                 </Link>
                 {!isOwner && (
-                  <Link href={authenticatedGroupPath} className="button button-dark">
+                  <Link href={groupGiftPath} className="button button-dark">
                     함께 선물하기
                   </Link>
                 )}

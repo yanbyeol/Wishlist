@@ -224,6 +224,19 @@ img {
   gap: 8px;
 }
 
+.gift-session-controls { gap: 12px; }
+
+.gift-session-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.gift-session-label .status-badge {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
 .notification-trigger {
   position: relative;
   width: 42px;
@@ -990,35 +1003,6 @@ img {
 .auth-description { margin: 8px 0 28px; color: var(--muted); }
 .auth-alternate { color: var(--muted); text-align: center; }
 .auth-alternate a { color: var(--primary-dark); font-weight: 800; }
-
-.auth-email-otp { margin-top: 24px; }
-
-.auth-method-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  color: var(--muted);
-  font-size: var(--font-size-sm);
-}
-
-.auth-method-divider::before,
-.auth-method-divider::after {
-  height: 1px;
-  flex: 1;
-  content: "";
-  background: var(--border);
-}
-
-.auth-email-otp .otp-verification-form { margin-top: 18px; }
-
-.auth-email-otp-help {
-  margin: 14px 0 22px;
-  color: var(--muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.6;
-  text-align: center;
-}
 
 .stack-form { display: flex; flex-direction: column; gap: 18px; }
 
@@ -2093,6 +2077,13 @@ img {
     padding: 10px 4px 2px;
     border-top: 1px solid var(--border);
   }
+
+  .gift-session-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .gift-session-label { margin-right: auto; }
 
   .account-user-name { max-width: 80px; }
   .account-menu-trigger { min-height: 40px; padding: 6px 9px; }

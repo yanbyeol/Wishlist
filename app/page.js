@@ -5,13 +5,13 @@ import { getProductFilters } from "@/app/product-filter";
 import { ArrowIcon, GiftIcon, SparkleIcon } from "@/components/icons";
 import { getAddressRequiredGiftSummary } from "@/lib/orders";
 import { listProducts } from "@/lib/products";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentMember } from "@/lib/session";
 import { getWishlistedProductIds } from "@/lib/wishlists";
 
 export default async function Home({ searchParams }) {
   await connection();
   const filters = getProductFilters(await searchParams);
-  const user = await getCurrentUser();
+  const user = await getCurrentMember();
   const [products, wishlistedIds, addressRequiredGift] = await Promise.all([
     listProducts({ category: filters.category, query: filters.keyword, sort: filters.sort, excludeSoldOut: filters.excludeSoldOut }),
     user ? getWishlistedProductIds(user.id) : [],

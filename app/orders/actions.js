@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { findStartedGroupGiftForProduct } from "@/lib/group-gifts";
 import { createMockOrder } from "@/lib/orders";
 import { getProductById } from "@/lib/products";
-import { requireUser } from "@/lib/session";
+import { requireGiftUser } from "@/lib/session";
 import { findUserByEmail, findUserById } from "@/lib/users";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 
@@ -13,7 +13,13 @@ export async function createOrderAction(previousState, formData) {
   const productId = String(formData.get("productId") ?? "");
   const mode = formData.get("mode") === "self" ? "self" : "single";
   const from = sanitizeCallbackPath(formData.get("from"), `/products/${productId}`);
-  const user = await requireUser(from);
+  const recipientId = String(formData.get("recipientId") ?? "");
+  const callbackParams = new URLSearchParams({ product: productId, from });
+
+  if (mode === "self") callbackParams.set("mode", "self");
+  if (recipientId) callbackParams.set("recipient", recipientId);
+
+  const user = await requireGiftUser(`/orders/new?${callbackParams}`);
   const message = String(formData.get("message") ?? "").trim();
 
   if (message.length < 2 || message.length > 500) {
@@ -29,7 +35,6 @@ export async function createOrderAction(previousState, formData) {
   let recipient = user;
 
   if (mode !== "self") {
-    const recipientId = String(formData.get("recipientId") ?? "");
     const recipientEmail = String(formData.get("recipientEmail") ?? "").trim().toLowerCase();
     recipient = recipientId
       ? await findUserById(recipientId)

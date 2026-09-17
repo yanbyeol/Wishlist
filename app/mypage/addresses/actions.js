@@ -8,11 +8,11 @@ import {
   setDefaultAddressOwned,
   updateAddressOwned,
 } from "@/lib/addresses";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import { parseAddressFormData } from "@/lib/utils/validation";
 
 export async function createAddressAction(previousState, formData) {
-  const user = await requireUser("/mypage/addresses");
+  const user = await requireMember("/mypage/addresses");
   const parsed = parseAddressFormData(formData, { includeLabel: true });
 
   if (parsed.error) {
@@ -34,7 +34,7 @@ export async function createAddressAction(previousState, formData) {
 }
 
 export async function updateAddressAction(previousState, formData) {
-  const user = await requireUser("/mypage/addresses");
+  const user = await requireMember("/mypage/addresses");
   const addressId = String(formData.get("addressId") ?? "");
   const parsed = parseAddressFormData(formData, { includeLabel: true });
 
@@ -62,7 +62,7 @@ export async function updateAddressAction(previousState, formData) {
 }
 
 export async function deleteAddressAction(formData) {
-  const user = await requireUser("/mypage/addresses");
+  const user = await requireMember("/mypage/addresses");
   const addressId = String(formData.get("addressId") ?? "");
   const deleted = await deleteAddressOwned(addressId, user.id);
 
@@ -72,7 +72,7 @@ export async function deleteAddressAction(formData) {
 }
 
 export async function setDefaultAddressAction(formData) {
-  const user = await requireUser("/mypage/addresses");
+  const user = await requireMember("/mypage/addresses");
   const addressId = String(formData.get("addressId") ?? "");
   const updated = await setDefaultAddressOwned(addressId, user.id);
 

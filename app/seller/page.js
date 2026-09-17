@@ -4,7 +4,7 @@ import { ArrowIcon, GiftIcon } from "@/components/icons";
 import ProductImage from "@/components/product-image";
 import StatusBadge from "@/components/status-badge";
 import { getSellerDashboard } from "@/lib/seller-dashboard";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import { formatDate, formatWon, getOrderStatusLabel } from "@/lib/utils/format";
 import { normalizeId } from "@/lib/utils/mongo";
 import styles from "./seller-home.module.css";
@@ -20,7 +20,7 @@ function getStatusTone(status) {
 
 export default async function SellerHomePage() {
   await connection();
-  const user = await requireUser("/seller");
+  const user = await requireMember("/seller");
   const dashboard = await getSellerDashboard(user.id);
   const summaryCards = [
     { label: "판매 중 상품", value: dashboard.counts.activeProducts, unit: "개", note: "등록 상품 현황" },

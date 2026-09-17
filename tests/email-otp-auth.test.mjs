@@ -79,7 +79,7 @@ function loadEmailOtpFunctions() {
     otpRequests: [],
     otpReads: [],
     signIns: [],
-    wishlists: [],
+    sessionAccessModes: [],
     contributionUpdates: [],
   };
   const auth = {
@@ -126,17 +126,18 @@ function loadEmailOtpFunctions() {
       },
       normalizeUserEmail: (email) => String(email ?? "").trim().toLowerCase(),
     },
+    "@/lib/session": {
+      SESSION_ACCESS_MODES: { GIFT: "gift", MEMBER: "member" },
+      async setSessionAccessMode(token, accessMode) {
+        calls.sessionAccessModes.push({ token, accessMode });
+      },
+    },
     "@/lib/utils/mongo": {
       normalizeId: (value) => value == null ? "" : String(value),
     },
     "@/lib/utils/validation": {
       isValidEmail: (email) => email.includes("@"),
       isValidOtpCode: (code) => /^\d{6}$/.test(code),
-    },
-    "@/lib/wishlists": {
-      async ensureWishlist(user) {
-        calls.wishlists.push(user);
-      },
     },
   }, {
     process: {
@@ -177,7 +178,10 @@ test("이메일 OTP 인증은 Better Auth의 기존 사용자 ID로 세션을 �
   assert.equal(second.user.id, "existing-user-id");
   assert.equal(calls.signIns.length, 2);
   assert.equal(calls.signIns[0].body.email, "friend@example.com");
-  assert.equal(calls.wishlists[0].id, "existing-user-id");
+  assert.deepEqual(calls.sessionAccessModes[0], {
+    token: "signed-session-token",
+    accessMode: "gift",
+  });
   assert.equal(
     calls.contributionUpdates[0].query.guestEmail,
     "friend@example.com",

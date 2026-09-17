@@ -277,7 +277,7 @@ test("관리 Server Action은 폼의 사용자 값이 아니라 현재 세션 �
     "@/lib/products": { getProductById: async () => null },
     "@/lib/session": {
       getCurrentUser: async () => ({ id: "session-user-id" }),
-      requireUser: async () => ({ id: "session-user-id" }),
+      requireGiftUser: async () => ({ id: "session-user-id" }),
     },
     "@/lib/users": {
       findUserByEmail: async () => null,

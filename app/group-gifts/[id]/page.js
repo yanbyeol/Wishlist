@@ -154,7 +154,14 @@ export default async function GroupGiftPage({ params, searchParams }) {
             <div className="stack-form">
               <h2>데모 결제를 다시 처리해 주세요</h2>
               <p>참여 내역이 있는 사용자만 다시 시도할 수 있습니다.</p>
-              {hasContribution ? (
+              {!user ? (
+                <GuestOtpForm
+                  groupGiftId={groupGift.id}
+                  returnTo={returnTo}
+                  description="참여했던 이메일을 인증하면 결제 처리를 다시 시도할 수 있어요."
+                  verifyLabel="인증하고 내역 확인하기"
+                />
+              ) : hasContribution ? (
                 <RetryGroupGiftForm groupGiftId={groupGift.id} returnTo={returnTo} />
               ) : (
                 <p className="muted-copy">참여한 사용자가 다시 처리할 수 있어요.</p>
@@ -165,6 +172,14 @@ export default async function GroupGiftPage({ params, searchParams }) {
             <div className="stack-form">
               <h2>목표 금액을 모두 모았어요!</h2>
               <p>AI 축하 카드와 선물이 준비되었습니다.</p>
+              {!user && (
+                <GuestOtpForm
+                  groupGiftId={groupGift.id}
+                  returnTo={returnTo}
+                  description="개설하거나 참여했던 이메일을 인증하면 완성된 선물을 확인할 수 있어요."
+                  verifyLabel="인증하고 선물 확인하기"
+                />
+              )}
               {groupGift.orderId && user && (
                 [groupGift.organizerId, groupGift.recipientId].includes(user.id) || hasContribution
               ) && (
@@ -180,12 +195,12 @@ export default async function GroupGiftPage({ params, searchParams }) {
               <h2>목표 금액을 달성하지 못했어요</h2>
               <p>모집 기간이 끝나 현재는 참여할 수 없습니다.</p>
               {!user && (
-                <Link
-                  href={`/login?callback=${encodeURIComponent(`/group-gifts/${groupGift.id}`)}`}
-                  className="button button-secondary button-full"
-                >
-                  이메일 인증하고 관리하기
-                </Link>
+                <GuestOtpForm
+                  groupGiftId={groupGift.id}
+                  returnTo={returnTo}
+                  description="공동선물을 만든 이메일을 인증하면 모집 기간을 연장할 수 있어요."
+                  verifyLabel="인증하고 관리하기"
+                />
               )}
             </div>
           )}

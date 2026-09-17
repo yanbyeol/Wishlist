@@ -75,14 +75,31 @@ function AccountMenu({ currentMode, onNavigate, userName }) {
   );
 }
 
+function GiftSessionControl({ onNavigate, userName }) {
+  return (
+    <div className="header-user-controls gift-session-controls">
+      <div className="gift-session-label">
+        <span className="account-user-name">{userName || "간편 사용자"}</span>
+        <StatusBadge tone="neutral">선물 간편 인증</StatusBadge>
+      </div>
+      <Link href="/login" onClick={onNavigate}>회원 로그인</Link>
+      <form action={signOutAction} onSubmit={onNavigate}>
+        <button className="text-button" type="submit">인증 종료</button>
+      </form>
+    </div>
+  );
+}
+
 export default function SiteHeader({
   isLoggedIn,
+  isGiftAuthenticated = false,
   userName,
+  giftUserName = "",
   notifications = [],
   unreadNotificationCount = 0,
 }) {
   const pathname = usePathname() ?? "/";
-  const currentMode = getModeFromPath(pathname);
+  const currentMode = isLoggedIn ? getModeFromPath(pathname) : "user";
   const homePath = currentMode === "seller" ? "/seller" : "/";
   const isSellerProductsPath = pathname === "/seller/products" || pathname.startsWith("/seller/products/");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -209,6 +226,14 @@ export default function SiteHeader({
                   userName={userName}
                 />
               </div>
+            </>
+          ) : isGiftAuthenticated ? (
+            <>
+              <Link href="/" onClick={closeMobileMenu}>상품 둘러보기</Link>
+              <GiftSessionControl
+                onNavigate={closeMobileMenu}
+                userName={giftUserName}
+              />
             </>
           ) : (
             <>

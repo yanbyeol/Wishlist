@@ -68,7 +68,7 @@ test("최초 메인 요청은 connection 이후 URL 조건으로 조회하고 �
     "@/components/icons": {},
     "@/lib/orders": { getAddressRequiredGiftSummary: async () => null },
     "@/lib/products": { listProducts: async (filters) => { calls.push({ ...filters }); return [{ id: "product" }]; } },
-    "@/lib/session": { getCurrentUser: async () => { calls.push("session"); return { id: "user", email: "private@example.com" }; } },
+    "@/lib/session": { getCurrentMember: async () => { calls.push("session"); return { id: "user", email: "private@example.com" }; } },
     "@/lib/wishlists": { getWishlistedProductIds: async (id) => { calls.push(id); return ["product"]; } },
   }).default;
   const tree = await Home({ searchParams: Promise.resolve({ category: "리빙", q: " 머그 ", sort: "price_asc", excludeSoldOut: "1" }) });
@@ -103,7 +103,7 @@ test("로그인 홈은 배송지 입력이 필요한 최신 선물을 하나의 
       },
     },
     "@/lib/products": { listProducts: async () => [] },
-    "@/lib/session": { getCurrentUser: async () => ({ id: "session-user" }) },
+    "@/lib/session": { getCurrentMember: async () => ({ id: "session-user" }) },
     "@/lib/wishlists": { getWishlistedProductIds: async () => [] },
   }).default;
 

@@ -252,7 +252,7 @@ test("Server Action은 차단된 직접 요청을 안내하고 화면을 갱신�
   const actions = loadSource("app/wishlist/actions.js", {
     "next/cache": { revalidatePath: (path) => revalidatedPaths.push(path) },
     "@/lib/constants": { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE: message },
-    "@/lib/session": { requireUser: async () => ({ id: "recipient-id" }) },
+    "@/lib/session": { requireMember: async () => ({ id: "recipient-id" }) },
     "@/lib/utils/format": { sanitizeCallbackPath: (value) => String(value) },
     "@/lib/wishlists": {
       setWishlistProduct: async () => ({ added: false, removalBlocked: true }),
@@ -273,7 +273,7 @@ test("중복 add 요청은 제거로 뒤집지 않고 자연스러운 안내를 
   const actions = loadSource("app/wishlist/actions.js", {
     "next/cache": { revalidatePath: (path) => revalidatedPaths.push(path) },
     "@/lib/constants": { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE: message },
-    "@/lib/session": { requireUser: async () => ({ id: "recipient-id" }) },
+    "@/lib/session": { requireMember: async () => ({ id: "recipient-id" }) },
     "@/lib/utils/format": { sanitizeCallbackPath: (value) => String(value) },
     "@/lib/wishlists": {
       async setWishlistProduct(currentUser, productId, shouldAdd) {

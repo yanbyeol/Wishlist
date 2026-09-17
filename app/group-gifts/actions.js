@@ -16,7 +16,7 @@ import {
   verifyGuestGroupGiftOtp,
 } from "@/lib/group-gift-otp";
 import { getProductById } from "@/lib/products";
-import { getCurrentUser, requireUser } from "@/lib/session";
+import { getCurrentUser, requireGiftUser } from "@/lib/session";
 import { findUserByEmail, findUserById } from "@/lib/users";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 import {
@@ -31,7 +31,12 @@ export async function createGroupGiftAction(previousState, formData) {
   const recipientId = String(formData.get("recipientId") ?? "");
   const from = sanitizeCallbackPath(formData.get("from"), "/");
   const returnTo = getSharedWishlistReturnPath(formData.get("returnTo"));
-  const user = await requireUser(from);
+  const callbackParams = new URLSearchParams({ product: productId, recipient: recipientId });
+
+  if (from !== "/") callbackParams.set("from", from);
+  if (returnTo) callbackParams.set("returnTo", returnTo);
+
+  const user = await requireGiftUser(`/group-gifts/new?${callbackParams}`);
   const title = String(formData.get("title") ?? "").trim();
 
   if (title.length < 2 || title.length > 60) {
@@ -84,6 +89,17 @@ async function recipientMatchesEmail(groupGift, email) {
   return emailUser?.id === groupGift.recipientId;
 }
 
+function canAuthenticateForGroupGift(groupGift) {
+  return groupGift && [
+    "funding",
+    "goal_not_met",
+    "payment_failed",
+    "funded",
+    "processing",
+    "completed",
+  ].includes(groupGift.status);
+}
+
 export async function requestGroupGiftOtpAction(groupGiftId, previousState, formData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
 
@@ -100,11 +116,11 @@ export async function requestGroupGiftOtpAction(groupGiftId, previousState, form
     return { message: "로그인 세션으로 바로 참여할 수 있습니다.", error: false };
   }
 
-  if (!groupGift || groupGift.status !== "funding") {
-    return { message: "현재 함께 선물하기에 참여할 수 없습니다.", error: true, email };
+  if (!canAuthenticateForGroupGift(groupGift)) {
+    return { message: "현재 이 공동선물에서 이메일 인증을 진행할 수 없습니다.", error: true, email };
   }
 
-  if (await recipientMatchesEmail(groupGift, email)) {
+  if (groupGift.status === "funding" && await recipientMatchesEmail(groupGift, email)) {
     return { message: "선물을 받는 사람은 참여할 수 없습니다.", error: true, email };
   }
 
@@ -135,11 +151,11 @@ export async function verifyGroupGiftOtpAction(groupGiftId, previousState, formD
   const returnTo = getSharedWishlistReturnPath(formData.get("returnTo"));
   const groupGift = await getGroupGiftById(groupGiftId);
 
-  if (!groupGift || groupGift.status !== "funding") {
-    return { message: "현재 함께 선물하기에 참여할 수 없습니다.", error: true, email };
+  if (!canAuthenticateForGroupGift(groupGift)) {
+    return { message: "현재 이 공동선물에서 이메일 인증을 진행할 수 없습니다.", error: true, email };
   }
 
-  if (await recipientMatchesEmail(groupGift, email)) {
+  if (groupGift.status === "funding" && await recipientMatchesEmail(groupGift, email)) {
     return { message: "선물을 받는 사람은 참여할 수 없습니다.", error: true, email };
   }
 
@@ -246,7 +262,7 @@ export async function retryGroupGiftPaymentAction(groupGiftId, previousState, fo
 }
 
 export async function extendGroupGiftAction(groupGiftId, previousState, formData) {
-  const user = await requireUser(`/group-gifts/${groupGiftId}`);
+  const user = await requireGiftUser(`/group-gifts/${groupGiftId}`);
   const endDate = String(formData.get("endDate") ?? "").trim();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
@@ -271,7 +287,7 @@ export async function extendGroupGiftAction(groupGiftId, previousState, formData
 }
 
 export async function cancelGroupGiftAction(groupGiftId) {
-  const user = await requireUser(`/group-gifts/${groupGiftId}`);
+  const user = await requireGiftUser(`/group-gifts/${groupGiftId}`);
 
   try {
     await cancelGroupGift(groupGiftId, user.id);

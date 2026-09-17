@@ -25,6 +25,7 @@ function loadSource(path, dependencies, globals = {}) {
   runInNewContext(code, {
     module: sourceModule,
     exports: sourceModule.exports,
+    URLSearchParams,
     require(name) {
       if (name === "react/jsx-runtime") return jsxRuntime;
       if (name in dependencies) return dependencies[name];
@@ -365,7 +366,7 @@ test("공동선물 개설자에게만 기간 연장·종료 관리 UI를 표시�
   assert.equal(
     findElements(
       expiredTree,
-      (node) => node.type === "Link" && node.props.href === "/login?callback=%2Fgroup-gifts%2Fgift-id",
+      (node) => node.type === "GuestOtpForm",
     ).length,
     1,
   );
@@ -569,7 +570,7 @@ function loadContributionAction({
     "@/lib/products": { getProductById: async () => null },
     "@/lib/session": {
       getCurrentUser: async () => participant?.id ? participant : null,
-      requireUser: async () => participant,
+      requireGiftUser: async () => participant,
     },
     "@/lib/users": {
       findUserByEmail: async () => null,
@@ -636,7 +637,7 @@ function loadCreateGroupGiftAction({ existingGroupGift = null } = {}) {
     },
     "@/lib/session": {
       getCurrentUser: async () => null,
-      async requireUser(callback) {
+      async requireGiftUser(callback) {
         calls.callbacks.push(callback);
         return { id: "organizer-id" };
       },
@@ -675,7 +676,9 @@ test("공동선물 생성 결과에는 출처를 저장하지 않고 공유 위�
   assert.deepEqual(created.calls.redirects, [
     "/group-gifts/new-gift-id?returnTo=%2Fshared%2Fshared-token",
   ]);
-  assert.deepEqual(created.calls.callbacks, ["/shared/shared-token/products/product-id"]);
+  assert.deepEqual(created.calls.callbacks, [
+    "/group-gifts/new?product=product-id&recipient=recipient-id&from=%2Fshared%2Fshared-token%2Fproducts%2Fproduct-id&returnTo=%2Fshared%2Fshared-token",
+  ]);
   assert.equal(created.calls.revalidated.includes("/shared/shared-token/products/product-id"), true);
   assert.equal(created.calls.created.length, 1);
   assert.deepEqual(Object.keys(created.calls.created[0]).sort(), [

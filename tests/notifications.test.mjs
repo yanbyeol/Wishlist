@@ -258,7 +258,7 @@ test("알림 읽음 Server Action은 클라이언트 userId 대신 세션 사용
         return { link: "/orders/order-id" };
       },
     },
-    "@/lib/session": { getCurrentUser: async () => ({ id: "session-user-id" }) },
+    "@/lib/session": { getCurrentMember: async () => ({ id: "session-user-id" }) },
   });
 
   const result = await actions.readNotificationAction("notification-id");
@@ -282,7 +282,7 @@ test("읽은 알림 삭제 Server Action은 세션 사용자 소유 알림만 �
         return true;
       },
     },
-    "@/lib/session": { getCurrentUser: async () => ({ id: "session-user-id" }) },
+    "@/lib/session": { getCurrentMember: async () => ({ id: "session-user-id" }) },
   });
 
   const result = await actions.deleteReadNotificationAction("notification-id");

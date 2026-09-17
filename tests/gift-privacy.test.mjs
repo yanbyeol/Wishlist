@@ -407,7 +407,10 @@ function loadOrderPage({
         return pageOrder(address, card, orderOverrides);
       },
     },
-    "@/lib/session": { requireUser: async () => ({ id: userId }) },
+    "@/lib/session": {
+      requireMember: async () => ({ id: userId, isMember: true }),
+      requireUser: async () => ({ id: userId, isMember: true }),
+    },
     "@/lib/utils/format": {
       formatDate: () => "2026년 9월 17일",
       formatWon: (amount) => `${amount}원`,
@@ -435,7 +438,7 @@ function loadAcceptGiftPage(gift) {
       },
     },
     "@/lib/session": {
-      requireUser: async () => ({ id: "recipient-id", name: "받는 사람" }),
+      requireMember: async () => ({ id: "recipient-id", name: "받는 사람", isMember: true }),
     },
   }).default;
 
@@ -660,7 +663,7 @@ test("마이페이지의 보낸 선물 상세 링크는 발신자 관점을 유�
         recipient: { name: "받는 사람" },
       }],
     },
-    "@/lib/session": { requireUser: async () => ({ id: "sender-id" }) },
+    "@/lib/session": { requireMember: async () => ({ id: "sender-id", isMember: true }) },
     "@/lib/utils/format": {
       formatDate: () => "2026년 9월 17일",
       getOrderStatusLabel: () => "상품 준비 중",
