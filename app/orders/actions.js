@@ -70,7 +70,7 @@ export async function createOrderAction(previousState, formData) {
     };
   }
 
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/wishlist");
   revalidatePath("/mypage");
   revalidatePath("/mypage/gifts");

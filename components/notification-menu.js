@@ -1,7 +1,10 @@
 "use client";
 
 import { startTransition, useEffect, useRef, useState } from "react";
-import { readNotificationAction } from "@/app/notifications/actions";
+import {
+  deleteReadNotificationAction,
+  readNotificationAction,
+} from "@/app/notifications/actions";
 import { BellIcon } from "@/components/icons";
 
 export default function NotificationMenu({
@@ -12,6 +15,7 @@ export default function NotificationMenu({
   const [notifications, setNotifications] = useState(initialNotifications);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [pendingId, setPendingId] = useState("");
+  const [pendingType, setPendingType] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const menuRef = useRef(null);
 
@@ -46,6 +50,7 @@ export default function NotificationMenu({
     }
 
     setPendingId(notification.id);
+    setPendingType("open");
     setErrorMessage("");
 
     startTransition(async () => {
@@ -69,6 +74,35 @@ export default function NotificationMenu({
         setErrorMessage("알림을 열지 못했습니다. 잠시 후 다시 시도해 주세요.");
       } finally {
         setPendingId("");
+        setPendingType("");
+      }
+    });
+  }
+
+  function deleteNotification(notification) {
+    if (!notification.read || pendingId) {
+      return;
+    }
+
+    setPendingId(notification.id);
+    setPendingType("delete");
+    setErrorMessage("");
+
+    startTransition(async () => {
+      try {
+        const result = await deleteReadNotificationAction(notification.id);
+
+        if (!result?.deleted) {
+          setErrorMessage(result?.error ?? "알림을 삭제하지 못했습니다.");
+          return;
+        }
+
+        setNotifications((items) => items.filter((item) => item.id !== notification.id));
+      } catch {
+        setErrorMessage("알림을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      } finally {
+        setPendingId("");
+        setPendingType("");
       }
     });
   }
@@ -104,24 +138,43 @@ export default function NotificationMenu({
           {notifications.length > 0 ? (
             <div className="notification-list">
               {notifications.map((notification) => (
-                <button
+                <div
                   key={notification.id}
                   className={`notification-item ${notification.read ? "read" : "unread"}`}
-                  type="button"
-                  role="menuitem"
-                  disabled={Boolean(pendingId)}
-                  onClick={() => openNotification(notification)}
+                  role="none"
                 >
-                  <span className="notification-item-marker" aria-hidden="true" />
-                  <span className="notification-item-copy">
-                    <strong>{notification.title}</strong>
-                    <span>{notification.message}</span>
-                    <time dateTime={notification.createdAt}>{notification.createdAtLabel}</time>
-                  </span>
-                  {pendingId === notification.id && (
-                    <span className="notification-item-status">여는 중…</span>
+                  <button
+                    className="notification-item-open"
+                    type="button"
+                    role="menuitem"
+                    disabled={Boolean(pendingId)}
+                    onClick={() => openNotification(notification)}
+                  >
+                    <span className="notification-item-marker" aria-hidden="true" />
+                    <span className="notification-item-copy">
+                      <strong>{notification.title}</strong>
+                      <span>{notification.message}</span>
+                      <time dateTime={notification.createdAt}>{notification.createdAtLabel}</time>
+                    </span>
+                    {pendingId === notification.id && pendingType === "open" && (
+                      <span className="notification-item-status">여는 중…</span>
+                    )}
+                  </button>
+                  {notification.read && (
+                    <button
+                      className="notification-item-delete"
+                      type="button"
+                      role="menuitem"
+                      aria-label={`알림 삭제: ${notification.title}`}
+                      disabled={Boolean(pendingId)}
+                      onClick={() => deleteNotification(notification)}
+                    >
+                      {pendingId === notification.id && pendingType === "delete"
+                        ? "삭제 중…"
+                        : "삭제"}
+                    </button>
                   )}
-                </button>
+                </div>
               ))}
             </div>
           ) : (

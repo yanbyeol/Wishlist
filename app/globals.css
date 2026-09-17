@@ -244,23 +244,30 @@ img {
 }
 
 .notification-item {
-  position: relative;
   width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border-bottom: 1px solid #f1e8e5;
+  background: var(--surface);
+}
+
+.notification-item-open {
+  min-width: 0;
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: start;
   gap: 11px;
-  padding: 14px 16px;
+  padding: 14px 12px 14px 16px;
   border: 0;
-  border-bottom: 1px solid #f1e8e5;
-  background: var(--surface);
+  background: transparent;
   text-align: left;
 }
 
 .notification-item.unread { background: #fff8f4; }
-.notification-item:hover:not(:disabled),
-.notification-item:focus-visible { background: var(--surface-soft); }
-.notification-item:disabled { opacity: 0.72; }
+.notification-item-open:hover:not(:disabled),
+.notification-item-open:focus-visible { background: var(--surface-soft); }
+.notification-item-open:disabled { opacity: 0.72; }
 
 .notification-item-marker {
   width: 7px;
@@ -305,6 +312,27 @@ img {
   font-size: 11px;
   white-space: nowrap;
 }
+
+.notification-item-delete {
+  align-self: center;
+  margin-right: 12px;
+  padding: 6px 8px;
+  color: var(--muted);
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.notification-item-delete:hover:not(:disabled),
+.notification-item-delete:focus-visible {
+  color: var(--danger);
+  background: #fff0f0;
+}
+
+.notification-item-delete:disabled { opacity: 0.62; }
 
 .notification-empty,
 .notification-error {

@@ -100,6 +100,12 @@ function createNotificationDatabase(initialDocuments = []) {
       Object.assign(document, update.$set);
       return document;
     },
+    async deleteOne(filter) {
+      const index = documents.findIndex((item) => documentMatches(item, filter));
+      if (index < 0) return { deletedCount: 0 };
+      documents.splice(index, 1);
+      return { deletedCount: 1 };
+    },
   };
   return {
     documents,
@@ -179,11 +185,21 @@ test("알림 목록과 읽음 처리는 로그인 사용자 ID를 DB 조건에 �
   );
   assert.equal(readNotification.read, true);
   assert.equal(documents[0].read, true);
+
+  assert.equal(await notifications.deleteReadNotification(String(ownReadId), "other-id"), false);
+  assert.equal(await notifications.deleteReadNotification(String(ownReadId), "member-id"), true);
+  assert.equal(documents.some((item) => String(item._id) === String(ownReadId)), false);
 });
 
 test("알림 읽음 Server Action은 클라이언트 userId 대신 세션 사용자만 전달한다", async () => {
   const calls = [];
+  const revalidated = [];
   const actions = loadSource("app/notifications/actions.js", {
+    "next/cache": {
+      revalidatePath(path, type) {
+        revalidated.push({ path, type });
+      },
+    },
     "@/lib/notifications": {
       async markNotificationRead(notificationId, userId) {
         calls.push({ notificationId, userId });
@@ -196,6 +212,85 @@ test("알림 읽음 Server Action은 클라이언트 userId 대신 세션 사용
   const result = await actions.readNotificationAction("notification-id");
   assert.deepEqual(calls, [{ notificationId: "notification-id", userId: "session-user-id" }]);
   assert.equal(result.link, "/orders/order-id");
+  assert.deepEqual(revalidated, [{ path: "/", type: "layout" }]);
+});
+
+test("읽은 알림 삭제 Server Action은 세션 사용자 소유 알림만 삭제한다", async () => {
+  const calls = [];
+  const revalidated = [];
+  const actions = loadSource("app/notifications/actions.js", {
+    "next/cache": {
+      revalidatePath(path, type) {
+        revalidated.push({ path, type });
+      },
+    },
+    "@/lib/notifications": {
+      async deleteReadNotification(notificationId, userId) {
+        calls.push({ notificationId, userId });
+        return true;
+      },
+    },
+    "@/lib/session": { getCurrentUser: async () => ({ id: "session-user-id" }) },
+  });
+
+  const result = await actions.deleteReadNotificationAction("notification-id");
+  assert.deepEqual(calls, [{ notificationId: "notification-id", userId: "session-user-id" }]);
+  assert.equal(result.deleted, true);
+  assert.deepEqual(revalidated, [{ path: "/", type: "layout" }]);
+});
+
+test("알림 메뉴는 읽은 알림에만 삭제 버튼을 표시한다", () => {
+  let stateIndex = 0;
+  const NotificationMenu = loadSource("components/notification-menu.js", {
+    react: {
+      startTransition(callback) {
+        callback();
+      },
+      useEffect() {},
+      useRef: () => ({ current: null }),
+      useState(initialValue) {
+        const value = stateIndex === 0 ? true : initialValue;
+        stateIndex += 1;
+        return [value, () => {}];
+      },
+    },
+    "@/app/notifications/actions": {
+      deleteReadNotificationAction: async () => ({ deleted: true }),
+      readNotificationAction: async () => ({ link: "/" }),
+    },
+    "@/components/icons": { BellIcon: () => null },
+  }).default;
+  const tree = NotificationMenu({
+    initialNotifications: [
+      {
+        id: "unread-id",
+        title: "새 알림",
+        message: "확인해 주세요.",
+        link: "/orders/new",
+        read: false,
+        createdAt: new Date().toISOString(),
+        createdAtLabel: "방금",
+      },
+      {
+        id: "read-id",
+        title: "읽은 알림",
+        message: "이미 확인했습니다.",
+        link: "/orders/old",
+        read: true,
+        createdAt: new Date().toISOString(),
+        createdAtLabel: "어제",
+      },
+    ],
+    initialUnreadCount: 1,
+  });
+  const deleteButtons = findElements(
+    tree,
+    (node) => node.props.className === "notification-item-delete",
+  );
+
+  assert.equal(deleteButtons.length, 1);
+  assert.equal(deleteButtons[0].props.children, "삭제");
+  assert.equal(deleteButtons[0].props["aria-label"], "알림 삭제: 읽은 알림");
 });
 
 test("혼자 선물 주문 완료 뒤 수령·배송지 알림을 수령인에게 생성한다", async () => {

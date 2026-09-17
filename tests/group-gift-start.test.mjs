@@ -105,9 +105,13 @@ test("진행 중 공동선물 조회는 funding 상태에서 누적 금액이 0�
 });
 
 function loadOrderAction(startedGroupGift) {
-  const calls = { created: [], groupGiftQueries: [], redirects: [] };
+  const calls = { created: [], groupGiftQueries: [], redirects: [], revalidated: [] };
   const actions = loadSource("app/orders/actions.js", {
-    "next/cache": { revalidatePath: () => {} },
+    "next/cache": {
+      revalidatePath(path, type) {
+        calls.revalidated.push({ path, type });
+      },
+    },
     "next/navigation": {
       redirect(path) {
         calls.redirects.push(path);
@@ -166,6 +170,7 @@ test("최초 참여 전에는 혼자 선물 주문을 허용한다", async () =>
     productId: "product-id",
   }]);
   assert.equal(calls.created.length, 1);
+  assert.deepEqual(calls.revalidated[0], { path: "/", type: "layout" });
 });
 
 test("최초 참여 후에는 서버에서 혼자 선물 주문을 차단한다", async () => {
