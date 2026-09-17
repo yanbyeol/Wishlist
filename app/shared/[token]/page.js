@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import EmptyState from "@/components/empty-state";
 import ProductCard from "@/components/product-card";
 import { findOpenGroupGiftsForProducts } from "@/lib/group-gifts";
+import { getGroupGiftPath } from "@/lib/utils/group-gift-navigation";
 import { getSharedWishlist } from "@/lib/wishlists";
 
 export default async function SharedWishlistPage({ params }) {
@@ -39,10 +40,11 @@ export default async function SharedWishlistPage({ params }) {
               <ProductCard
                 key={product.id}
                 product={product}
-                detailsHref={`/shared/${token}/products/${product.id}`}
+                detailsHref={groupGift
+                  ? getGroupGiftPath(groupGift.id, `/shared/${token}`)
+                  : `/shared/${token}/products/${product.id}`}
                 showWishlistAction={false}
-                participationPath={groupGift ? `/group-gifts/${groupGift.id}` : ""}
-                participationTitle={groupGift?.title}
+                groupGiftStatus={groupGift?.status}
               />
             );
           })}

@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ProductImage from "@/components/product-image";
-import ShareButton from "@/components/share-button";
 import { GiftIcon, SparkleIcon } from "@/components/icons";
 import { findOpenGroupGiftForProduct } from "@/lib/group-gifts";
 import { getCurrentUser } from "@/lib/session";
 import { formatWon } from "@/lib/utils/format";
+import { getGroupGiftPath } from "@/lib/utils/group-gift-navigation";
 import { getSharedWishlist } from "@/lib/wishlists";
 
 export default async function SharedProductPage({ params }) {
@@ -20,21 +20,25 @@ export default async function SharedProductPage({ params }) {
   }
 
   const product = item.product;
-  const user = await getCurrentUser();
+  const sharedWishlistPath = `/shared/${token}`;
   const openGroupGift = await findOpenGroupGiftForProduct(wishlist.userId, product.id);
+
+  if (openGroupGift) {
+    redirect(getGroupGiftPath(openGroupGift.id, sharedWishlistPath));
+  }
+
+  const user = await getCurrentUser();
   const isOwner = user?.id === wishlist.userId;
   const soldOut = product.quantity === 0 || product.status === "sold_out";
   const returnPath = `/shared/${token}/products/${product.id}`;
   const orderPath = isOwner
     ? `/orders/new?product=${product.id}&mode=self&from=${encodeURIComponent(returnPath)}`
     : `/orders/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}`;
-  const groupGiftPath = openGroupGift
-    ? `/group-gifts/${openGroupGift.id}`
-    : `/group-gifts/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}`;
+  const groupGiftPath = `/group-gifts/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}&returnTo=${encodeURIComponent(sharedWishlistPath)}`;
   const authenticatedOrderPath = user
     ? orderPath
     : `/login?callback=${encodeURIComponent(orderPath)}`;
-  const authenticatedGroupPath = openGroupGift || user
+  const authenticatedGroupPath = user
     ? groupGiftPath
     : `/login?callback=${encodeURIComponent(groupGiftPath)}`;
 
@@ -68,20 +72,9 @@ export default async function SharedProductPage({ params }) {
                   <GiftIcon size={20} /> {isOwner ? "나에게 선물하기" : "혼자 선물하기"}
                 </Link>
                 {!isOwner && (
-                  <>
-                    <Link href={authenticatedGroupPath} className="button button-dark">
-                      {openGroupGift ? "함께 선물하기 참여" : "함께 선물하기"}
-                    </Link>
-                    {openGroupGift && (
-                      <ShareButton
-                        path={`/group-gifts/${openGroupGift.id}`}
-                        title={openGroupGift.title}
-                        label="참여 링크 복사"
-                        copyOnly
-                        buttonClassName="button button-ghost"
-                      />
-                    )}
-                  </>
+                  <Link href={authenticatedGroupPath} className="button button-dark">
+                    함께 선물하기
+                  </Link>
                 )}
               </>
             )}

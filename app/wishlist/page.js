@@ -51,8 +51,10 @@ export default async function WishlistPage() {
                   user={user}
                   isWishlisted
                   returnPath="/wishlist"
-                  participationPath={groupGift ? `/group-gifts/${groupGift.id}` : ""}
-                  participationTitle={groupGift?.title}
+                  detailsHref={groupGift
+                    ? `/group-gifts/${groupGift.id}`
+                    : `/products/${product.id}`}
+                  groupGiftStatus={groupGift?.status}
                 />
               );
             })}
