@@ -62,6 +62,7 @@ const formatFunctions = loadModule("lib/utils/format.js", {});
 const navigationFunctions = loadModule("lib/utils/group-gift-navigation.js", {
   "@/lib/utils/format": formatFunctions,
 });
+const groupGiftFunctions = loadModule("lib/utils/group-gift.js", {});
 
 function findElements(tree, predicate) {
   const found = [];
@@ -86,13 +87,19 @@ function loadProductCard() {
     "@/components/status-badge": "StatusBadge",
     "@/components/wishlist-button": "WishlistButton",
     "@/lib/utils/format": { formatWon: (price) => `${price}원` },
+    "@/lib/utils/group-gift": groupGiftFunctions,
   });
 }
 
 for (const status of openStatuses) {
   test(`상품 카드의 ${status} 상태는 복사 버튼 대신 정한 문구를 표시한다`, () => {
     const ProductCard = loadProductCard();
-    const tree = ProductCard({ product, groupGiftStatus: status, detailsHref: "/group-gifts/gift-id" });
+    const tree = ProductCard({
+      product,
+      groupGiftStatus: status,
+      groupGiftCurrentAmount: status === "funding" ? 1000 : 10000,
+      detailsHref: "/group-gifts/gift-id",
+    });
     const badges = findElements(tree, (node) => node.type === "StatusBadge");
     const links = findElements(tree, (node) => node.type === "Link");
 
@@ -118,6 +125,23 @@ test("모집 종료·완료·알 수 없는 상태와 일반 상품에는 공동
   }
 });
 
+test("참여 합계가 0원인 funding 상품에는 공동선물 진행중 배지를 표시하지 않는다", () => {
+  const ProductCard = loadProductCard();
+  const tree = ProductCard({
+    product,
+    groupGiftStatus: "funding",
+    groupGiftCurrentAmount: 0,
+  });
+  const links = findElements(tree, (node) => node.type === "Link");
+
+  assert.equal(findElements(tree, (node) => node.type === "StatusBadge").length, 0);
+  assert.deepEqual(links.map((link) => link.props.href), [
+    "/products/product-id",
+    "/products/product-id",
+  ]);
+  assert.equal(links[0].props["aria-label"], "테스트 상품 상세 보기");
+});
+
 function loadListPage(mode, loadedWishlist, groupGifts) {
   const calls = { connections: 0, groupGiftQueries: [] };
   const Page = loadSource(mode === "shared" ? "app/shared/[token]/page.js" : "app/wishlist/page.js", {
@@ -128,7 +152,7 @@ function loadListPage(mode, loadedWishlist, groupGifts) {
     "@/components/product-card": "ProductCard",
     "@/components/share-button": "ShareButton",
     "@/lib/group-gifts": {
-      async findOpenGroupGiftsForProducts(recipientId, productIds) {
+      async findStartedGroupGiftsForProducts(recipientId, productIds) {
         calls.groupGiftQueries.push({ recipientId, productIds: Array.from(productIds) });
         return groupGifts;
       },
@@ -162,6 +186,7 @@ for (const mode of ["shared", "own"]) {
       id: `gift-${status}`,
       productId: `product-${status}`,
       status,
+      currentAmount: status === "funding" ? 1000 : 10000,
     }));
     const loadedWishlist = { ...wishlist, items: products.map((item) => ({ product: item })) };
     const { Page, calls } = loadListPage(mode, loadedWishlist, groupGifts);
@@ -180,6 +205,7 @@ for (const mode of ["shared", "own"]) {
         : `/group-gifts/gift-${status}`;
       assert.equal(cards[index].props.detailsHref, expectedGroupGiftPath);
       assert.equal(cards[index].props.groupGiftStatus, status);
+      assert.equal(cards[index].props.groupGiftCurrentAmount, groupGifts[index].currentAmount);
       const cardTree = ProductCard(cards[index].props);
       const links = findElements(cardTree, (node) => node.type === "Link");
       assert.deepEqual(links.map((link) => link.props.href), [expectedGroupGiftPath, expectedGroupGiftPath]);
@@ -233,6 +259,7 @@ function loadSharedProductPage({ groupGift = null, loadedWishlist = wishlist, cu
       },
     },
     "@/lib/utils/group-gift-navigation": navigationFunctions,
+    "@/lib/utils/group-gift": groupGiftFunctions,
     "@/lib/utils/format": { formatWon: (price) => `${price}원` },
     "@/lib/wishlists": { async getSharedWishlist() { return loadedWishlist; } },
   });
@@ -242,7 +269,14 @@ function loadSharedProductPage({ groupGift = null, loadedWishlist = wishlist, cu
 for (const status of openStatuses) {
   test(`기존 공유 상품 상세 주소의 ${status} 공동선물은 인증·상품 상세 없이 바로 연결한다`, async () => {
     for (const currentUser of [null, user, { id: "friend-id" }]) {
-      const { Page, calls } = loadSharedProductPage({ groupGift: { id: "gift-id", status }, currentUser });
+      const { Page, calls } = loadSharedProductPage({
+        groupGift: {
+          id: "gift-id",
+          status,
+          currentAmount: status === "funding" ? 1000 : 10000,
+        },
+        currentUser,
+      });
       await assert.rejects(
         Page({ params: Promise.resolve({ token: "shared-token", id: product.id }) }),
         /^Error: REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token$/,
@@ -253,6 +287,33 @@ for (const status of openStatuses) {
     }
   });
 }
+
+test("참여 합계가 0원인 공동선물은 상품 상세와 혼자 선물하기를 유지한다", async () => {
+  const from = encodeURIComponent("/shared/shared-token/products/product-id");
+  const friendOrderPath = `/orders/new?product=product-id&recipient=recipient-id&from=${from}`;
+  const selfOrderPath = `/orders/new?product=product-id&mode=self&from=${from}`;
+  const existingGroupPath = "/group-gifts/gift-id?returnTo=%2Fshared%2Fshared-token";
+  const groupGift = { id: "gift-id", status: "funding", currentAmount: 0 };
+
+  for (const currentUser of [null, user, { id: "friend-id" }]) {
+    const { Page, calls } = loadSharedProductPage({ groupGift, currentUser });
+    const tree = await Page({
+      params: Promise.resolve({ token: "shared-token", id: product.id }),
+    });
+    const actionLinks = findElements(
+      tree,
+      (node) => node.type === "Link" && node.props.className.startsWith("button"),
+    );
+    const expectedPaths = currentUser?.id === user.id
+      ? [selfOrderPath]
+      : [friendOrderPath, existingGroupPath];
+
+    assert.deepEqual(actionLinks.map((link) => link.props.href), currentUser
+      ? expectedPaths
+      : [`/login?callback=${encodeURIComponent(friendOrderPath)}`, existingGroupPath]);
+    assert.equal(calls.userQueries, 1);
+  }
+});
 
 test("공동선물이 없는 공유 상품은 로그인 여부와 수령인에 따른 기존 선물 동작을 유지한다", async () => {
   const from = encodeURIComponent("/shared/shared-token/products/product-id");

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { findStartedGroupGiftForProduct } from "@/lib/group-gifts";
 import { createMockOrder } from "@/lib/orders";
 import { getProductById } from "@/lib/products";
 import { requireUser } from "@/lib/session";
@@ -37,6 +38,17 @@ export async function createOrderAction(previousState, formData) {
     if (!recipient) {
       return { message: "선물을 받을 회원을 찾을 수 없습니다. 가입한 이메일을 확인해 주세요." };
     }
+  }
+
+  const startedGroupGift = await findStartedGroupGiftForProduct(
+    recipient.id,
+    product.id,
+  );
+
+  if (startedGroupGift) {
+    return {
+      message: "공동선물이 진행 중인 상품은 혼자 선물할 수 없습니다. 공동선물 페이지에서 참여해 주세요.",
+    };
   }
 
   let order;

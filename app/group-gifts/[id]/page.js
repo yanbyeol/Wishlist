@@ -17,6 +17,7 @@ import {
   formatWon,
   getGroupGiftStatusLabel,
 } from "@/lib/utils/format";
+import { hasGroupGiftStarted } from "@/lib/utils/group-gift";
 import { getSharedWishlistReturnPath } from "@/lib/utils/group-gift-navigation";
 
 function statusTone(status) {
@@ -46,6 +47,8 @@ export default async function GroupGiftPage({ params, searchParams }) {
     Math.round((groupGift.currentAmount / groupGift.targetAmount) * 100),
   );
   const isRecipient = user?.id === groupGift.recipientId;
+  const groupGiftStarted = hasGroupGiftStarted(groupGift);
+  const waitingForFirstContribution = groupGift.status === "funding" && !groupGiftStarted;
   const hasContribution = user || guestSession
     ? await hasGroupGiftContribution({
       groupGiftId: groupGift.id,
@@ -64,7 +67,11 @@ export default async function GroupGiftPage({ params, searchParams }) {
         <div>
           <p className="eyebrow">함께 선물하기</p>
           <h1>{groupGift.title}</h1>
-          <p>{groupGift.recipient?.name ?? "친구"}님을 위한 선물을 함께 준비하고 있어요.</p>
+          <p>
+            {waitingForFirstContribution
+              ? "금액 참여를 완료하면 공동선물이 시작돼요."
+              : `${groupGift.recipient?.name ?? "친구"}님을 위한 선물을 함께 준비하고 있어요.`}
+          </p>
         </div>
         <ShareButton
           path={`/group-gifts/${groupGift.id}`}
@@ -82,11 +89,17 @@ export default async function GroupGiftPage({ params, searchParams }) {
             <div>
               <p className="eyebrow">{groupGift.product.category}</p>
               <h2>{groupGift.product.name}</h2>
-              <p>{groupGift.organizer?.name ?? "친구"}님이 함께 선물하기를 시작했어요.</p>
+              <p>
+                {waitingForFirstContribution
+                  ? `${groupGift.organizer?.name ?? "친구"}님이 함께 선물할 친구를 초대했어요.`
+                  : `${groupGift.organizer?.name ?? "친구"}님이 함께 선물하기를 시작했어요.`}
+              </p>
             </div>
-            <StatusBadge tone={statusTone(groupGift.status)}>
-              {getGroupGiftStatusLabel(groupGift.status)}
-            </StatusBadge>
+            {!waitingForFirstContribution && (
+              <StatusBadge tone={statusTone(groupGift.status)}>
+                {getGroupGiftStatusLabel(groupGift.status)}
+              </StatusBadge>
+            )}
           </div>
 
           <div className="progress-card">
@@ -182,7 +195,7 @@ export default async function GroupGiftPage({ params, searchParams }) {
             </div>
           )}
           {groupGift.status === "cancelled" && (
-            <div className="stack-form"><h2>모집이 종료되었어요</h2><p>모집 기간 안에 목표 금액에 도달하지 못했습니다.</p></div>
+            <div className="stack-form"><h2>모집이 종료되었어요</h2><p>이 공동선물에는 더 이상 참여할 수 없습니다.</p></div>
           )}
           {["funded", "processing"].includes(groupGift.status) && (
             <div className="stack-form"><h2>선물을 준비하고 있어요</h2><p>목표를 달성해 데모 결제와 축하 카드를 처리 중입니다.</p></div>

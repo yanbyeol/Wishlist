@@ -1,6 +1,7 @@
 import { connection } from "next/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import OrderForm from "@/app/orders/new/order-form";
+import { findStartedGroupGiftForProduct } from "@/lib/group-gifts";
 import { getProductById } from "@/lib/products";
 import { requireUser } from "@/lib/session";
 import { findUserById } from "@/lib/users";
@@ -36,6 +37,14 @@ export default async function NewOrderPage({ searchParams }) {
 
   const mode = requestedMode === "self" || requestedRecipient?.id === user.id ? "self" : "single";
   const recipient = mode === "self" ? user : requestedRecipient;
+
+  if (recipient) {
+    const startedGroupGift = await findStartedGroupGiftForProduct(recipient.id, product.id);
+
+    if (startedGroupGift) {
+      redirect(`/group-gifts/${startedGroupGift.id}`);
+    }
+  }
 
   return (
     <section className="container page-section">

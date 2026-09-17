@@ -3,6 +3,7 @@ import ProductImage from "@/components/product-image";
 import StatusBadge from "@/components/status-badge";
 import WishlistButton from "@/components/wishlist-button";
 import { formatWon } from "@/lib/utils/format";
+import { hasGroupGiftStarted } from "@/lib/utils/group-gift";
 
 export default function ProductCard({
   product,
@@ -13,12 +14,20 @@ export default function ProductCard({
   returnPath = "/",
   showWishlistAction = true,
   groupGiftStatus = "",
+  groupGiftCurrentAmount = 0,
 }) {
   let groupGiftStatusLabel = "";
+  const groupGiftStarted = hasGroupGiftStarted({
+    status: groupGiftStatus,
+    currentAmount: groupGiftCurrentAmount,
+  });
 
-  if (groupGiftStatus === "funding") {
+  if (groupGiftStatus === "funding" && groupGiftStarted) {
     groupGiftStatusLabel = "공동선물 진행중";
-  } else if (["funded", "processing", "payment_failed"].includes(groupGiftStatus)) {
+  } else if (
+    groupGiftStarted &&
+    ["funded", "processing", "payment_failed"].includes(groupGiftStatus)
+  ) {
     groupGiftStatusLabel = "목표 달성";
   }
 

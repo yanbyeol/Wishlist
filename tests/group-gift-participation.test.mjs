@@ -92,6 +92,7 @@ test("기존 참여 여부는 회원 ID 또는 인증 이메일과 paid 상태�
     "@/lib/orders": { createMockOrder: async () => null },
     "@/lib/products": { getProductById: async () => null },
     "@/lib/users": { findUserById: async () => null },
+    "@/lib/wishlists": { isProductInWishlist: async () => true },
     "@/lib/utils/mongo": {
       documentIdFilter: (id) => ({ _id: String(id) }),
       foreignKeyCandidates: (values) => values,
@@ -125,14 +126,14 @@ test("기존 참여 여부는 회원 ID 또는 인증 이메일과 paid 상태�
   assert.equal(queries.length, 2);
 });
 
-function groupGift(status = "funding") {
+function groupGift(status = "funding", currentAmount = 10000) {
   return {
     id: "gift-id",
     organizerId: "organizer-id",
     recipientId: "recipient-id",
     title: "테스트 공동선물",
     targetAmount: 50000,
-    currentAmount: 10000,
+    currentAmount,
     status,
     expiresAt: new Date("2026-09-30T00:00:00.000Z").toISOString(),
     orderId: status === "completed" ? "order-id" : null,
@@ -148,7 +149,13 @@ function groupGift(status = "funding") {
   };
 }
 
-function loadGroupGiftPage({ status = "funding", user = null, guestSession = null, hasContribution = false } = {}) {
+function loadGroupGiftPage({
+  status = "funding",
+  currentAmount = 10000,
+  user = null,
+  guestSession = null,
+  hasContribution = false,
+} = {}) {
   const contributionQueries = [];
   const sessionQueries = [];
   const Page = loadSource("app/group-gifts/[id]/page.js", {
@@ -170,13 +177,18 @@ function loadGroupGiftPage({ status = "funding", user = null, guestSession = nul
       },
     },
     "@/lib/group-gifts": {
-      getGroupGiftById: async () => groupGift(status),
+      getGroupGiftById: async () => groupGift(status, currentAmount),
       async hasGroupGiftContribution(participant) {
         contributionQueries.push({ ...participant });
         return hasContribution;
       },
     },
     "@/lib/session": { getCurrentUser: async () => user },
+    "@/lib/utils/group-gift": {
+      hasGroupGiftStarted: (value) => (
+        value.status === "funding" ? value.currentAmount > 0 : value.status !== "cancelled"
+      ),
+    },
     "@/lib/utils/group-gift-navigation": navigationFunctions,
     "@/lib/utils/format": {
       formatDate: (value) => value,
@@ -186,6 +198,15 @@ function loadGroupGiftPage({ status = "funding", user = null, guestSession = nul
   }).default;
   return { Page, contributionQueries, sessionQueries };
 }
+
+test("참여 합계가 0원인 공동선물 상세는 별도 상태 없이 참여 완료 시점을 안내한다", async () => {
+  const { Page } = loadGroupGiftPage({ currentAmount: 0 });
+  const tree = await Page({ params: Promise.resolve({ id: "gift-id" }) });
+
+  assert.equal(findElements(tree, (node) => node.type === "StatusBadge").length, 0);
+  assert.equal(findText(tree, "금액 참여를 완료하면 공동선물이 시작돼요."), true);
+  assert.equal(findText(tree, "개설자님이 함께 선물할 친구를 초대했어요."), true);
+});
 
 test("공유 위시리스트 복귀 경로는 허용된 단일 공유 경로만 사용한다", () => {
   assert.equal(navigationFunctions.getSharedWishlistReturnPath("/shared/shared-token"), "/shared/shared-token");

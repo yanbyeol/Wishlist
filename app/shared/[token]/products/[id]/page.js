@@ -6,6 +6,7 @@ import { GiftIcon, SparkleIcon } from "@/components/icons";
 import { findOpenGroupGiftForProduct } from "@/lib/group-gifts";
 import { getCurrentUser } from "@/lib/session";
 import { formatWon } from "@/lib/utils/format";
+import { hasGroupGiftStarted } from "@/lib/utils/group-gift";
 import { getGroupGiftPath } from "@/lib/utils/group-gift-navigation";
 import { getSharedWishlist } from "@/lib/wishlists";
 
@@ -23,7 +24,7 @@ export default async function SharedProductPage({ params }) {
   const sharedWishlistPath = `/shared/${token}`;
   const openGroupGift = await findOpenGroupGiftForProduct(wishlist.userId, product.id);
 
-  if (openGroupGift) {
+  if (hasGroupGiftStarted(openGroupGift)) {
     redirect(getGroupGiftPath(openGroupGift.id, sharedWishlistPath));
   }
 
@@ -34,11 +35,13 @@ export default async function SharedProductPage({ params }) {
   const orderPath = isOwner
     ? `/orders/new?product=${product.id}&mode=self&from=${encodeURIComponent(returnPath)}`
     : `/orders/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}`;
-  const groupGiftPath = `/group-gifts/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}&returnTo=${encodeURIComponent(sharedWishlistPath)}`;
+  const groupGiftPath = openGroupGift
+    ? getGroupGiftPath(openGroupGift.id, sharedWishlistPath)
+    : `/group-gifts/new?product=${product.id}&recipient=${wishlist.userId}&from=${encodeURIComponent(returnPath)}&returnTo=${encodeURIComponent(sharedWishlistPath)}`;
   const authenticatedOrderPath = user
     ? orderPath
     : `/login?callback=${encodeURIComponent(orderPath)}`;
-  const authenticatedGroupPath = user
+  const authenticatedGroupPath = openGroupGift || user
     ? groupGiftPath
     : `/login?callback=${encodeURIComponent(groupGiftPath)}`;
 

@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import EmptyState from "@/components/empty-state";
 import ProductCard from "@/components/product-card";
 import ShareButton from "@/components/share-button";
-import { findOpenGroupGiftsForProducts } from "@/lib/group-gifts";
+import { findStartedGroupGiftsForProducts } from "@/lib/group-gifts";
 import { requireUser } from "@/lib/session";
 import { getWishlistForUser } from "@/lib/wishlists";
 
@@ -13,12 +13,12 @@ export default async function WishlistPage() {
   await connection();
   const user = await requireUser("/wishlist");
   const wishlist = await getWishlistForUser(user);
-  const openGroupGifts = await findOpenGroupGiftsForProducts(
+  const startedGroupGifts = await findStartedGroupGiftsForProducts(
     user.id,
     wishlist.items.map(({ product }) => product.id),
   );
   const groupGiftByProductId = new Map(
-    openGroupGifts.map((groupGift) => [groupGift.productId, groupGift]),
+    startedGroupGifts.map((groupGift) => [groupGift.productId, groupGift]),
   );
 
   return (
@@ -55,6 +55,7 @@ export default async function WishlistPage() {
                     ? `/group-gifts/${groupGift.id}`
                     : `/products/${product.id}`}
                   groupGiftStatus={groupGift?.status}
+                  groupGiftCurrentAmount={groupGift?.currentAmount}
                 />
               );
             })}

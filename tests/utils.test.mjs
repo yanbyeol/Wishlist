@@ -14,6 +14,7 @@ import {
   parseNonNegativeInteger,
   parsePositiveInteger,
 } from "../lib/utils/validation.js";
+import { hasGroupGiftStarted } from "../lib/utils/group-gift.js";
 
 test("금액을 한국 원화 문자열로 표시한다", () => {
   assert.equal(formatWon(240000), "240,000원");
@@ -30,7 +31,16 @@ test("주문과 공동선물 상태를 읽기 쉬운 문구로 바꾼다", () =>
   assert.equal(getOrderStatusLabel("awaiting_address"), "배송지 입력 대기");
   assert.equal(getOrderStatusLabel("unknown"), "처리 중");
   assert.equal(getGroupGiftStatusLabel("completed"), "선물 준비 완료");
+  assert.equal(getGroupGiftStatusLabel("funding"), "함께 선물 진행 중");
   assert.equal(getGroupGiftStatusLabel("unknown"), "처리 중");
+});
+
+test("공동선물 시작 여부는 최초 누적 참여 금액부터 참이 된다", () => {
+  assert.equal(hasGroupGiftStarted({ status: "funding", currentAmount: 0 }), false);
+  assert.equal(hasGroupGiftStarted({ status: "funding", currentAmount: 10000 }), true);
+  assert.equal(hasGroupGiftStarted({ status: "funded", currentAmount: 10000 }), true);
+  assert.equal(hasGroupGiftStarted({ status: "completed", currentAmount: 10000 }), true);
+  assert.equal(hasGroupGiftStarted({ status: "cancelled", currentAmount: 10000 }), false);
 });
 
 test("상품 가격과 수량에 사용할 정수만 파싱한다", () => {
