@@ -1489,11 +1489,49 @@ img {
   white-space: pre-wrap;
 }
 
+.gift-card-message-list {
+  width: 100%;
+  max-width: 340px;
+  display: grid;
+  gap: 0;
+  margin: 24px auto 0;
+  text-align: left;
+}
+
+.gift-card-message-row {
+  display: grid;
+  grid-template-columns: minmax(56px, 0.34fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(89, 60, 72, 0.1);
+}
+
+.gift-card-message-row:last-child { border-bottom: 0; }
+
+.gift-card-message-row span {
+  color: rgba(89, 60, 72, 0.58);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.gift-card-message-row p {
+  color: #4b3440;
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .gift-card-sender,
 .group-message-card-sender {
   display: flex;
   align-items: baseline;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 30px;
   color: rgba(89, 60, 72, 0.64);

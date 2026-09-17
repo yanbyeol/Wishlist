@@ -78,11 +78,13 @@ const cardDocument = {
   acceptedAt: new Date("2026-09-17T00:00:00.000Z"),
 };
 
-function createOrdersModule(document = orderDocument) {
+function createOrdersModule(document = orderDocument, contributionDocuments = []) {
   const calls = {
     orderProjection: null,
     cardProjection: null,
     cardQueries: 0,
+    contributionFilter: null,
+    contributionSort: null,
   };
   const db = {
     collection(name) {
@@ -111,6 +113,23 @@ function createOrdersModule(document = orderDocument) {
             calls.cardQueries += 1;
             calls.cardProjection = options?.projection ?? null;
             return cardDocument;
+          },
+        };
+      }
+
+      if (name === "contributions") {
+        return {
+          find(filter) {
+            calls.contributionFilter = filter;
+            return {
+              sort(sort) {
+                calls.contributionSort = sort;
+                return this;
+              },
+              async toArray() {
+                return contributionDocuments;
+              },
+            };
           },
         };
       }
@@ -221,6 +240,48 @@ test("주문 상세는 보낸 사람에게 배송지를 제거하고 받는 사�
   assert.equal(calls.cardQueries, cardQueriesBeforeUnauthorizedRequest);
 });
 
+test("공동선물 배송지 입력 조회는 결제 완료 참여자를 오래된 순서대로 함께 반환한다", async () => {
+  const groupOrder = {
+    ...orderDocument,
+    type: "group",
+    groupGiftId: "group-gift-id",
+  };
+  const contributionDocuments = [
+    {
+      _id: "contribution-one",
+      groupGiftId: "group-gift-id",
+      nickname: "이준호",
+      amount: 20000,
+      message: "축하해!",
+      paymentStatus: "paid",
+    },
+    {
+      _id: "contribution-two",
+      groupGiftId: "group-gift-id",
+      nickname: "이한별",
+      amount: 10000,
+      message: "좋은 선물 되길 바라 :)",
+      paymentStatus: "paid",
+    },
+  ];
+  const { orders, calls } = createOrdersModule(groupOrder, contributionDocuments);
+  const gift = await orders.getGiftByAcceptanceToken(
+    "secret-token",
+    { includeContributions: true },
+  );
+
+  assert.deepEqual(
+    gift.contributions.map(({ name, message }) => ({ name, message })),
+    [
+      { name: "이준호", message: "축하해!" },
+      { name: "이한별", message: "좋은 선물 되길 바라 :)" },
+    ],
+  );
+  assert.equal(calls.contributionFilter.groupGiftId, "group-gift-id");
+  assert.equal(calls.contributionFilter.paymentStatus, "paid");
+  assert.equal(calls.contributionSort.createdAt, 1);
+});
+
 function findElements(tree, predicate) {
   const found = [];
 
@@ -293,6 +354,107 @@ function loadOrderPage({ userId, address, view = "", card = null }) {
 
   return { Page, calls };
 }
+
+function loadAcceptGiftPage(gift) {
+  const calls = [];
+  const Page = loadSource("app/gifts/accept/[token]/page.js", {
+    "next/link": "Link",
+    "next/server": { connection: async () => {} },
+    "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
+    "@/app/gifts/accept/[token]/accept-gift-form": "AcceptGiftForm",
+    "@/components/icons": { GiftIcon: "GiftIcon" },
+    "@/components/product-image": "ProductImage",
+    "@/lib/addresses": { listAddresses: async () => [] },
+    "@/lib/orders": {
+      async getGiftByAcceptanceToken(token, options) {
+        calls.push({ token, options });
+        return gift;
+      },
+    },
+    "@/lib/session": {
+      requireUser: async () => ({ id: "recipient-id", name: "받는 사람" }),
+    },
+  }).default;
+
+  return { Page, calls };
+}
+
+test("공동선물 배송지 입력 카드는 참여자별 메시지와 전체 참여자 이름을 표시한다", async () => {
+  const contributions = [
+    { id: "one", name: "이준호", message: "축하해!" },
+    { id: "two", name: "이한별", message: "좋은 선물 되길 바라 :)" },
+    { id: "three", name: "김민지", message: "행복한 하루 보내!" },
+    { id: "four", name: "박도윤", message: "즐겁게 사용해!" },
+    { id: "five", name: "최서연", message: "   " },
+  ];
+  const groupGift = {
+    card: {
+      message: "이준호: 축하해! · 이한별: 좋은 선물 되길 바라 :)",
+      theme: "warm-confetti",
+      acceptedAt: null,
+    },
+    order: {
+      id: "order-id",
+      type: "group",
+      recipientId: "recipient-id",
+      productSnapshot: { name: "함께 준비한 선물", imageUrl: "/gift.jpg" },
+    },
+    sender: { name: "개설자" },
+    contributions,
+  };
+  const group = loadAcceptGiftPage(groupGift);
+  const tree = await group.Page({ params: Promise.resolve({ token: "group-token" }) });
+  const giftCard = findElements(
+    tree,
+    (node) => String(node.props.className ?? "").startsWith("gift-card "),
+  )[0];
+  const rows = findElements(
+    giftCard,
+    (node) => node.props.className === "gift-card-message-row",
+  );
+  const sender = findElements(
+    giftCard,
+    (node) => node.props.className === "gift-card-sender",
+  )[0];
+
+  assert.deepEqual(
+    rows.map((row) => findElements(row, (node) => node.type === "span")[0].props.children),
+    ["이준호", "이한별", "김민지", "박도윤"],
+  );
+  assert.deepEqual(
+    rows.map((row) => findElements(row, (node) => node.type === "p")[0].props.children),
+    ["축하해!", "좋은 선물 되길 바라 :)", "행복한 하루 보내!", "즐겁게 사용해!"],
+  );
+  assert.equal(findElements(giftCard, (node) => node.type === "blockquote").length, 0);
+  assert.equal(
+    findElements(sender, (node) => node.type === "strong")[0].props.children,
+    "이준호 외 4명",
+  );
+  assert.equal(group.calls.length, 1);
+  assert.equal(group.calls[0].token, "group-token");
+  assert.equal(group.calls[0].options.includeContributions, true);
+
+  const personalGift = {
+    ...groupGift,
+    card: { ...groupGift.card, message: "생일 축하해!" },
+    order: { ...groupGift.order, type: "single" },
+    sender: { name: "한별" },
+    contributions: [],
+  };
+  const personal = loadAcceptGiftPage(personalGift);
+  const personalTree = await personal.Page({
+    params: Promise.resolve({ token: "personal-token" }),
+  });
+  const personalSender = findElements(
+    personalTree,
+    (node) => node.props.className === "gift-card-sender",
+  )[0];
+
+  assert.equal(
+    findElements(personalSender, (node) => node.type === "strong")[0].props.children,
+    "한별",
+  );
+});
 
 test("혼자 선물 축하 카드는 메시지와 보낸 사람을 중심으로 표시한다", async () => {
   const card = {

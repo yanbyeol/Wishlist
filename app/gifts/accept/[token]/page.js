@@ -10,17 +10,45 @@ import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "선물 수락" };
 
+function getContributorName(contribution) {
+  return String(contribution.name ?? "").trim() || "익명의 친구";
+}
+
+function getGroupGiftSenderLabel(contributions, fallbackName) {
+  const contributorNames = contributions
+    .map(getContributorName)
+    .filter((name, index, names) => names.indexOf(name) === index);
+
+  if (contributorNames.length === 0) {
+    return fallbackName;
+  }
+
+  if (contributorNames.length <= 3) {
+    return contributorNames.join(", ");
+  }
+
+  return `${contributorNames[0]} 외 ${contributorNames.length - 1}명`;
+}
+
 export default async function AcceptGiftPage({ params }) {
   await connection();
   const { token } = await params;
   const user = await requireUser(`/gifts/accept/${token}`);
-  const gift = await getGiftByAcceptanceToken(token);
+  const gift = await getGiftByAcceptanceToken(token, { includeContributions: true });
 
   if (!gift || gift.order.recipientId !== user.id) {
     notFound();
   }
 
   const addresses = await listAddresses(user.id);
+  const isGroupGift = gift.order.type === "group";
+  const contributions = gift.contributions ?? [];
+  const groupMessages = isGroupGift
+    ? contributions.filter((contribution) => String(contribution.message ?? "").trim())
+    : [];
+  const senderLabel = isGroupGift
+    ? getGroupGiftSenderLabel(contributions, gift.sender?.name ?? "친구")
+    : gift.sender?.name ?? "친구";
 
   return (
     <section className="container page-section acceptance-grid">
@@ -30,10 +58,21 @@ export default async function AcceptGiftPage({ params }) {
       >
         <span className="gift-card-icon" aria-hidden="true"><GiftIcon size={20} /></span>
         <p className="gift-card-intro">{user.name ?? "친구"}님에게 선물이 도착했어요</p>
-        <blockquote>{gift.card.message}</blockquote>
+        {groupMessages.length > 0 ? (
+          <div className="gift-card-message-list" aria-label="참여자별 축하 메시지">
+            {groupMessages.map((contribution) => (
+              <div className="gift-card-message-row" key={contribution.id}>
+                <span>{getContributorName(contribution)}</span>
+                <p>{contribution.message}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <blockquote>{gift.card.message}</blockquote>
+        )}
         <p className="gift-card-sender">
           <span>From.</span>
-          <strong>{gift.sender?.name ?? "친구"}</strong>
+          <strong>{senderLabel}</strong>
         </p>
       </article>
       <div>
