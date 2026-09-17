@@ -5,20 +5,49 @@ import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { toggleWishlistAction } from "@/app/wishlist/actions";
 import { HeartIcon } from "@/components/icons";
+import { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE } from "@/lib/constants";
 
-export default function WishlistButton({ productId, isWishlisted, user, returnPath, compact = false }) {
+export default function WishlistButton({
+  productId,
+  isWishlisted,
+  user,
+  returnPath,
+  compact = false,
+  removalBlocked = false,
+}) {
   const [state, formAction, pending] = useActionState(toggleWishlistAction, null);
   const [dismissedState, setDismissedState] = useState(null);
-  const showFeedback = state?.added && dismissedState !== state;
+  const [clientMessage, setClientMessage] = useState("");
+  let serverMessage = "";
+
+  if (dismissedState !== state) {
+    if (state?.message) {
+      serverMessage = state.message;
+    } else if (state?.added) {
+      serverMessage = "위시리스트에 추가했어요.";
+    }
+  }
+
+  const feedbackMessage = clientMessage || serverMessage;
 
   useEffect(() => {
-    if (!state?.added) {
+    if (!feedbackMessage) {
       return undefined;
     }
 
-    const timer = window.setTimeout(() => setDismissedState(state), 4000);
+    const timer = window.setTimeout(() => {
+      setClientMessage("");
+      if (state) setDismissedState(state);
+    }, 4000);
     return () => window.clearTimeout(timer);
-  }, [state]);
+  }, [feedbackMessage, state]);
+
+  function handleSubmit(event) {
+    if (!isWishlisted || !removalBlocked) return;
+
+    event.preventDefault();
+    setClientMessage(GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE);
+  }
 
   if (!user) {
     return (
@@ -35,7 +64,7 @@ export default function WishlistButton({ productId, isWishlisted, user, returnPa
 
   return (
     <>
-      <form action={formAction}>
+      <form action={formAction} onSubmit={handleSubmit}>
         <input type="hidden" name="productId" value={productId} />
         <input type="hidden" name="returnPath" value={returnPath} />
         <button
@@ -48,10 +77,10 @@ export default function WishlistButton({ productId, isWishlisted, user, returnPa
           {!compact && <span>{isWishlisted ? "위시리스트에 담김" : "위시리스트 추가"}</span>}
         </button>
       </form>
-      {showFeedback && typeof document !== "undefined" && createPortal(
+      {feedbackMessage && typeof document !== "undefined" && createPortal(
         <div className="wishlist-feedback" role="status">
-          <span>위시리스트에 추가했어요.</span>
-          <Link href="/wishlist">위시리스트 보기</Link>
+          <span>{feedbackMessage}</span>
+          {state?.added && !clientMessage && <Link href="/wishlist">위시리스트 보기</Link>}
         </div>,
         document.body,
       )}

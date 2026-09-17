@@ -39,6 +39,7 @@ const formatFunctions = loadSource("lib/utils/format.js", {});
 const navigationFunctions = loadSource("lib/utils/group-gift-navigation.js", {
   "@/lib/utils/format": formatFunctions,
 });
+const groupGiftFunctions = loadSource("lib/utils/group-gift.js", {});
 
 function findElements(tree, predicate) {
   const found = [];
@@ -93,6 +94,7 @@ test("기존 참여 여부는 회원 ID 또는 인증 이메일과 paid 상태�
     "@/lib/products": { getProductById: async () => null },
     "@/lib/users": { findUserById: async () => null },
     "@/lib/wishlists": { isProductInWishlist: async () => true },
+    "@/lib/utils/group-gift": groupGiftFunctions,
     "@/lib/utils/mongo": {
       documentIdFilter: (id) => ({ _id: String(id) }),
       foreignKeyCandidates: (values) => values,

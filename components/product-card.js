@@ -45,6 +45,7 @@ export default function ProductCard({
           <WishlistButton
             productId={product.id}
             isWishlisted={isWishlisted}
+            removalBlocked={groupGiftStarted}
             user={user}
             returnPath={returnPath}
             compact

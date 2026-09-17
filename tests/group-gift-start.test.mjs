@@ -36,6 +36,8 @@ function loadSource(path, dependencies, globals = {}) {
   return sourceModule.exports;
 }
 
+const groupGiftUtils = loadSource("lib/utils/group-gift.js", {});
+
 function groupGiftDependencies(db) {
   return {
     "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
@@ -44,6 +46,7 @@ function groupGiftDependencies(db) {
     "@/lib/products": { getProductById: async () => null },
     "@/lib/users": { findUserById: async () => null },
     "@/lib/wishlists": { isProductInWishlist: async () => true },
+    "@/lib/utils/group-gift": groupGiftUtils,
     "@/lib/utils/mongo": {
       documentIdFilter: (id) => ({ _id: String(id) }),
       foreignKeyCandidates: (values) => values.map(String),

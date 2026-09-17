@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE } from "@/lib/constants";
 import { requireUser } from "@/lib/session";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 import { toggleWishlistProduct } from "@/lib/wishlists";
@@ -14,8 +15,16 @@ export async function toggleWishlistAction(previousState, formData) {
     return { added: false };
   }
 
-  const added = await toggleWishlistProduct(user, productId);
+  const result = await toggleWishlistProduct(user, productId);
+
+  if (result.removalBlocked) {
+    return {
+      ...result,
+      message: GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE,
+    };
+  }
+
   revalidatePath(returnPath);
   revalidatePath("/wishlist");
-  return { added };
+  return { ...result, message: "" };
 }

@@ -107,6 +107,10 @@ for (const status of openStatuses) {
     assert.equal(badges[0].props.children, status === "funding" ? "공동선물 진행중" : "목표 달성");
     assert.equal(badges[0].props.tone, status === "funding" ? "warm" : "accent");
     assert.equal(findElements(tree, (node) => node.type === "ShareButton").length, 0);
+    assert.equal(
+      findElements(tree, (node) => node.type === "WishlistButton")[0].props.removalBlocked,
+      true,
+    );
     assert.deepEqual(links.map((link) => link.props.href), ["/group-gifts/gift-id", "/group-gifts/gift-id"]);
     assert.equal(links[0].props["aria-label"], "테스트 상품 공동선물 보기");
   });
@@ -135,6 +139,10 @@ test("참여 합계가 0원인 funding 상품에는 공동선물 진행중 배�
   const links = findElements(tree, (node) => node.type === "Link");
 
   assert.equal(findElements(tree, (node) => node.type === "StatusBadge").length, 0);
+  assert.equal(
+    findElements(tree, (node) => node.type === "WishlistButton")[0].props.removalBlocked,
+    false,
+  );
   assert.deepEqual(links.map((link) => link.props.href), [
     "/products/product-id",
     "/products/product-id",
