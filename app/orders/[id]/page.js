@@ -70,6 +70,7 @@ export default async function OrderDetailPage({ params, searchParams }) {
         <GroupGiftMessageCards
           contributions={order.contributions}
           heading={`${order.contributions.length}명의 마음을 모았어요`}
+          totalAmount={order.groupGift?.targetAmount ?? order.totalAmount}
         />
       )}
 

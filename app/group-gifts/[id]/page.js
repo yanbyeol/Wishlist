@@ -117,6 +117,7 @@ export default async function GroupGiftPage({ params, searchParams }) {
           <GroupGiftMessageCards
             contributions={groupGift.contributions}
             heading={`${groupGift.contributions.length}명이 참여했어요`}
+            totalAmount={groupGift.targetAmount}
           />
         </div>
 

@@ -591,12 +591,17 @@ test("공동선물 축하 메시지는 작성한 참여자마다 독립된 소�
   ).default;
   const tree = GroupGiftMessageCards({
     contributions: [
-      { id: "one", nickname: "한별", message: "생일 축하해!" },
-      { id: "two", nickname: "민지", message: "항상 행복하자 :)" },
-      { id: "three", nickname: "도윤", message: "   " },
+      { id: "one", nickname: "한별", amount: 30000, message: "생일 축하해!" },
+      { id: "two", nickname: "민지", amount: 10000, message: "항상 행복하자 :)" },
+      { id: "three", nickname: "도윤", amount: 10000, message: "   " },
     ],
+    totalAmount: 50000,
   });
   const cards = findElements(tree, (node) => node.props.className === "group-message-card");
+  const progressBars = findElements(
+    tree,
+    (node) => node.props.className === "contribution-progress-track group-message-contribution-track",
+  );
 
   assert.equal(cards.length, 2);
   assert.deepEqual(
@@ -605,4 +610,12 @@ test("공동선물 축하 메시지는 작성한 참여자마다 독립된 소�
   );
   assert.equal(findElements(cards[0], (node) => node.type === "blockquote").length, 1);
   assert.equal(findElements(cards[1], (node) => node.type === "blockquote").length, 1);
+  assert.deepEqual(
+    progressBars.map((bar) => bar.props.children.props.style.width),
+    ["60%", "20%"],
+  );
+  assert.deepEqual(
+    progressBars.map((bar) => bar.props["aria-label"]),
+    ["한별님의 상대적인 기여도", "민지님의 상대적인 기여도"],
+  );
 });
