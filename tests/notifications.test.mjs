@@ -77,8 +77,25 @@ function createNotificationDatabase(initialDocuments = []) {
     find(filter) {
       let rows = documents.filter((document) => documentMatches(document, filter));
       const cursor = {
-        sort() {
-          rows = rows.slice().sort((first, second) => second.createdAt - first.createdAt);
+        sort(sortFields) {
+          rows = rows.slice().sort((first, second) => {
+            for (const [field, direction] of Object.entries(sortFields)) {
+              const firstValue = field === "read"
+                ? Number(Boolean(first[field]))
+                : first[field]?.valueOf?.() ?? first[field];
+              const secondValue = field === "read"
+                ? Number(Boolean(second[field]))
+                : second[field]?.valueOf?.() ?? second[field];
+
+              if (firstValue === secondValue) {
+                continue;
+              }
+
+              return firstValue < secondValue ? -direction : direction;
+            }
+
+            return 0;
+          });
           return cursor;
         },
         limit(limit) {
@@ -150,6 +167,41 @@ test("같은 이벤트의 알림은 결정적 ObjectId로 한 번만 저장한�
   assert.equal(documents[0]._id instanceof ObjectId, true);
   assert.equal(documents[0].userId, "recipient-id");
   assert.equal(documents[0].read, false);
+});
+
+test("알림 목록은 읽지 않은 항목을 먼저 두고 각 그룹을 최신순으로 정렬한다", async () => {
+  const now = Date.now();
+  const { database } = createNotificationDatabase([
+    {
+      _id: new ObjectId(), userId: "member-id", type: "GIFT_RECEIVED", title: "읽음 최신",
+      message: "읽은 알림입니다.", link: "/orders/read-new", read: true,
+      createdAt: new Date(now + 3000),
+    },
+    {
+      _id: new ObjectId(), userId: "member-id", type: "GIFT_RECEIVED", title: "미확인 과거",
+      message: "읽지 않은 알림입니다.", link: "/orders/unread-old", read: false,
+      createdAt: new Date(now),
+    },
+    {
+      _id: new ObjectId(), userId: "member-id", type: "GIFT_RECEIVED", title: "읽음 과거",
+      message: "읽은 알림입니다.", link: "/orders/read-old", read: true,
+      createdAt: new Date(now + 1000),
+    },
+    {
+      _id: new ObjectId(), userId: "member-id", type: "GIFT_RECEIVED", title: "미확인 최신",
+      message: "읽지 않은 알림입니다.", link: "/orders/unread-new", read: false,
+      createdAt: new Date(now + 2000),
+    },
+  ]);
+  const notifications = loadNotifications(database);
+
+  const summary = await notifications.getNotificationSummary("member-id");
+
+  assert.deepEqual(
+    Array.from(summary.notifications, (notification) => notification.title),
+    ["미확인 최신", "미확인 과거", "읽음 최신", "읽음 과거"],
+  );
+  assert.equal(summary.unreadCount, 2);
 });
 
 test("알림 목록과 읽음 처리는 로그인 사용자 ID를 DB 조건에 함께 사용한다", async () => {
