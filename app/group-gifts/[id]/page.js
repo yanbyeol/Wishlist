@@ -44,14 +44,13 @@ export default async function GroupGiftPage({ params }) {
     Math.round((groupGift.currentAmount / groupGift.targetAmount) * 100),
   );
   const isRecipient = user?.id === groupGift.recipientId;
-  const hasContribution = user
-    ? groupGift.contributions.some((contribution) => contribution.userId === user.id)
-    : guestSession
-      ? await hasGroupGiftContribution({
-        groupGiftId: groupGift.id,
-        guestEmail: guestSession.email,
-      })
-      : false;
+  const hasContribution = user || guestSession
+    ? await hasGroupGiftContribution({
+      groupGiftId: groupGift.id,
+      userId: user?.id,
+      guestEmail: guestSession?.email,
+    })
+    : false;
   const guestNickname = guestSession?.email.split("@")[0].slice(0, 20);
 
   return (
@@ -149,6 +148,7 @@ export default async function GroupGiftPage({ params }) {
               <ContributionForm
                 groupGift={groupGift}
                 defaultNickname={user?.name ?? (guestNickname?.length >= 2 ? guestNickname : "게스트")}
+                initialHasContribution={hasContribution}
               />
             </>
           )}

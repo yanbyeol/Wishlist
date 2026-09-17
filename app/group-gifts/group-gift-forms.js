@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   contributeGroupGiftAction,
   createGroupGiftAction,
@@ -118,10 +118,30 @@ export function GuestOtpForm({ groupGiftId }) {
   );
 }
 
-export function ContributionForm({ groupGift, defaultNickname }) {
+function ContributionComplete({ onAdditionalContribution }) {
+  return (
+    <div className="stack-form">
+      <strong>참여했습니다.</strong>
+      <p className="muted-copy">마음을 더 보태고 싶다면 추가로 참여할 수 있어요.</p>
+      <button
+        className="button button-secondary button-full"
+        type="button"
+        onClick={onAdditionalContribution}
+      >
+        추가 참여하기
+      </button>
+    </div>
+  );
+}
+
+function ContributionAttempt({ groupGift, defaultNickname, onAdditionalContribution }) {
   const action = contributeGroupGiftAction.bind(null, groupGift.id);
   const [state, formAction, pending] = useActionState(action, initialState);
   const remaining = groupGift.targetAmount - groupGift.currentAmount;
+
+  if (state?.success) {
+    return <ContributionComplete onAdditionalContribution={onAdditionalContribution} />;
+  }
 
   return (
     <form action={formAction} className="stack-form contribution-form">
@@ -146,6 +166,27 @@ export function ContributionForm({ groupGift, defaultNickname }) {
         {pending ? "목업 결제 중..." : "이 금액으로 참여하기"}
       </button>
     </form>
+  );
+}
+
+export function ContributionForm({ groupGift, defaultNickname, initialHasContribution }) {
+  const [attemptNumber, setAttemptNumber] = useState(initialHasContribution ? null : 0);
+
+  if (attemptNumber === null) {
+    return (
+      <ContributionComplete
+        onAdditionalContribution={() => setAttemptNumber(0)}
+      />
+    );
+  }
+
+  return (
+    <ContributionAttempt
+      key={attemptNumber}
+      groupGift={groupGift}
+      defaultNickname={defaultNickname}
+      onAdditionalContribution={() => setAttemptNumber((current) => current + 1)}
+    />
   );
 }
 

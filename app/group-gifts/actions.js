@@ -213,9 +213,11 @@ export async function contributeGroupGiftAction(groupGiftId, previousState, form
     if (user) {
       redirect(`/orders/${result.order.id}`);
     }
+
+    redirect(`/group-gifts/${groupGiftId}`);
   }
 
-  redirect(`/group-gifts/${groupGiftId}`);
+  return { message: "", success: true };
 }
 
 export async function retryGroupGiftPaymentAction(groupGiftId, previousState) {
