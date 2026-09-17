@@ -26,20 +26,41 @@ function getParticipantName(contribution) {
   return String(contribution.name ?? contribution.nickname ?? "").trim() || "익명의 친구";
 }
 
-function getParticipants(contributions) {
-  const participantNames = new Set();
+function getParticipantCards(contributions) {
+  const cardsByName = new Map();
 
-  return contributions.reduce((participants, contribution) => {
+  contributions.forEach((contribution) => {
     const name = getParticipantName(contribution);
+    const contributionAmount = Number(contribution.amount);
+    const message = String(contribution.message ?? "").trim();
+    const existingCard = cardsByName.get(name);
 
-    if (participantNames.has(name)) {
-      return participants;
+    if (existingCard) {
+      if (Number.isFinite(contributionAmount) && contributionAmount > 0) {
+        existingCard.amount += contributionAmount;
+      }
+      if (message) {
+        existingCard.messages.push(message);
+      }
+      return;
     }
 
-    participantNames.add(name);
-    participants.push({ id: contribution.id, name });
-    return participants;
-  }, []);
+    cardsByName.set(name, {
+      id: contribution.id,
+      name,
+      amount: Number.isFinite(contributionAmount) && contributionAmount > 0
+        ? contributionAmount
+        : 0,
+      messages: message ? [message] : [],
+    });
+  });
+
+  return Array.from(cardsByName.values(), (card) => ({
+    id: card.id,
+    name: card.name,
+    amount: card.amount,
+    message: card.messages.join("\n"),
+  }));
 }
 
 export default function GroupGiftMessageCards({
@@ -48,14 +69,11 @@ export default function GroupGiftMessageCards({
   showParticipantBadges = false,
   totalAmount,
 }) {
-  const participants = getParticipants(contributions);
-  const messages = contributions.filter(
-    (contribution) => String(contribution.message ?? "").trim(),
-  );
+  const participantCards = getParticipantCards(contributions);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef(null);
-  const hasMultipleMessages = messages.length > 1;
+  const hasMultipleMessages = participantCards.length > 1;
 
   useEffect(() => {
     if (
@@ -68,25 +86,25 @@ export default function GroupGiftMessageCards({
 
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") {
-        setActiveIndex((currentIndex) => (currentIndex + 1) % messages.length);
+        setActiveIndex((currentIndex) => (currentIndex + 1) % participantCards.length);
       }
     }, AUTO_SLIDE_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, [activeIndex, hasMultipleMessages, isPaused, messages.length]);
+  }, [activeIndex, hasMultipleMessages, isPaused, participantCards.length]);
 
-  if (messages.length === 0) {
+  if (participantCards.length === 0) {
     return null;
   }
 
   function showPreviousMessage() {
     setActiveIndex((currentIndex) => (
-      currentIndex === 0 ? messages.length - 1 : currentIndex - 1
+      currentIndex === 0 ? participantCards.length - 1 : currentIndex - 1
     ));
   }
 
   function showNextMessage() {
-    setActiveIndex((currentIndex) => (currentIndex + 1) % messages.length);
+    setActiveIndex((currentIndex) => (currentIndex + 1) % participantCards.length);
   }
 
   function handleTouchStart(event) {
@@ -146,10 +164,10 @@ export default function GroupGiftMessageCards({
     <section className="group-message-section" aria-label="공동선물 축하 메시지">
       <div className="group-message-heading">
         <p className="eyebrow">축하 메시지</p>
-        <h2>{heading ?? `${messages.length}개의 마음이 도착했어요`}</h2>
-        {showParticipantBadges && participants.length > 0 && (
+        <h2>{heading ?? `${participantCards.length}개의 마음이 도착했어요`}</h2>
+        {showParticipantBadges && participantCards.length > 0 && (
           <ul className="group-message-participants" aria-label="공동선물 참여자">
-            {participants.map((participant, index) => (
+            {participantCards.map((participant, index) => (
               <li
                 className="group-message-participant-badge"
                 key={participant.id ?? `${participant.name}-${index}`}
@@ -182,20 +200,19 @@ export default function GroupGiftMessageCards({
             className="group-message-track"
             style={{ transform: `translateX(-${activeIndex * 100}%)` }}
           >
-            {messages.map((contribution, index) => {
-              const contributorName = getParticipantName(contribution);
+            {participantCards.map((participant, index) => {
               const contributionWidth = getContributionWidth(
-                contribution.amount,
+                participant.amount,
                 totalAmount,
               );
 
               return (
                 <div
                   className="group-message-slide"
-                  key={contribution.id}
+                  key={participant.id}
                   role="group"
                   aria-roledescription="slide"
-                  aria-label={`${index + 1} / ${messages.length}`}
+                  aria-label={`${index + 1} / ${participantCards.length}`}
                   aria-hidden={index !== activeIndex}
                 >
                   <article className="group-message-card">
@@ -203,15 +220,15 @@ export default function GroupGiftMessageCards({
                       <GiftIcon size={18} />
                     </span>
                     <p className="group-message-card-intro">함께 준비한 선물이 도착했어요</p>
-                    <blockquote>{contribution.message}</blockquote>
+                    {participant.message && <blockquote>{participant.message}</blockquote>}
                     <p className="group-message-card-sender">
                       <span>From.</span>
-                      <strong>{contributorName}</strong>
+                      <strong>{participant.name}</strong>
                     </p>
                     <div
                       className="contribution-progress-track group-message-contribution-track"
                       role="img"
-                      aria-label={`${contributorName}님의 상대적인 기여도`}
+                      aria-label={`${participant.name}님의 상대적인 기여도`}
                     >
                       <span style={{ width: `${contributionWidth}%` }} />
                     </div>
@@ -233,11 +250,11 @@ export default function GroupGiftMessageCards({
               <span aria-hidden="true">‹</span>
             </button>
             <div className="group-message-dots" aria-label="축하 메시지 순서">
-              {messages.map((contribution, index) => (
+              {participantCards.map((participant, index) => (
                 <button
                   className={`group-message-dot ${index === activeIndex ? "active" : ""}`}
                   type="button"
-                  key={contribution.id}
+                  key={participant.id}
                   aria-label={`${index + 1}번째 축하 메시지 보기`}
                   aria-current={index === activeIndex ? "true" : undefined}
                   onClick={() => setActiveIndex(index)}

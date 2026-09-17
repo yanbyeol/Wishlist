@@ -636,25 +636,26 @@ test("공동선물 축하 메시지는 참여자별 카드 한 장을 캐러셀�
     (node) => node.props.className === "group-message-participant-badge",
   );
 
-  assert.equal(cards.length, 2);
+  assert.equal(cards.length, 3);
   assert.deepEqual(
     cards.map((card) => findElements(card, (node) => node.type === "strong")[0].props.children),
-    ["한별", "민지"],
+    ["한별", "민지", "도윤"],
   );
   assert.equal(findElements(cards[0], (node) => node.type === "blockquote").length, 1);
   assert.equal(findElements(cards[1], (node) => node.type === "blockquote").length, 1);
+  assert.equal(findElements(cards[2], (node) => node.type === "blockquote").length, 0);
   assert.deepEqual(
     progressBars.map((bar) => bar.props.children.props.style.width),
-    ["60%", "20%"],
+    ["70%", "20%", "20%"],
   );
   assert.deepEqual(
     progressBars.map((bar) => bar.props["aria-label"]),
-    ["한별님의 상대적인 기여도", "민지님의 상대적인 기여도"],
+    ["한별님의 상대적인 기여도", "민지님의 상대적인 기여도", "도윤님의 상대적인 기여도"],
   );
-  assert.deepEqual(slides.map((slide) => slide.props["aria-hidden"]), [false, true]);
+  assert.deepEqual(slides.map((slide) => slide.props["aria-hidden"]), [false, true, true]);
   assert.equal(track.props.style.transform, "translateX(-0%)");
   assert.equal(arrows.length, 2);
-  assert.equal(dots.length, 2);
+  assert.equal(dots.length, 3);
   assert.deepEqual(
     participantBadges.map((badge) => badge.props.children),
     ["한별", "민지", "도윤"],
