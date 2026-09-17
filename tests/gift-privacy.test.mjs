@@ -306,7 +306,7 @@ function getText(node) {
   return getText(node.props.children);
 }
 
-function pageOrder(address, card = null) {
+function pageOrder(address, card = null, overrides = {}) {
   return {
     id: "order-id",
     type: "single",
@@ -324,10 +324,17 @@ function pageOrder(address, card = null) {
     sender: { name: "보낸 사람" },
     recipient: { name: "받는 사람" },
     createdAt: orderDocument.createdAt.toISOString(),
+    ...overrides,
   };
 }
 
-function loadOrderPage({ userId, address, view = "", card = null }) {
+function loadOrderPage({
+  userId,
+  address,
+  view = "",
+  card = null,
+  orderOverrides = {},
+}) {
   const calls = [];
   const Page = loadSource("app/orders/[id]/page.js", {
     "next/link": "Link",
@@ -341,7 +348,7 @@ function loadOrderPage({ userId, address, view = "", card = null }) {
     "@/lib/orders": {
       async getOrderDetails(orderId, viewerId, orderView) {
         calls.push({ orderId, viewerId, orderView });
-        return pageOrder(address, card);
+        return pageOrder(address, card, orderOverrides);
       },
     },
     "@/lib/session": { requireUser: async () => ({ id: userId }) },
@@ -490,6 +497,33 @@ test("혼자 선물 축하 카드는 메시지와 보낸 사람을 중심으로 
     findElements(sender, (node) => node.type === "strong")[0].props.children,
     "보낸 사람",
   );
+});
+
+test("받은 공동선물 화면은 중복 참여를 제외한 참여자 수와 badge 표시를 전달한다", async () => {
+  const recipient = loadOrderPage({
+    userId: "recipient-id",
+    address: shippingAddress,
+    orderOverrides: {
+      type: "group",
+      contributions: [
+        { id: "one", name: "한별", amount: 10000, message: "축하해!" },
+        { id: "two", name: "민지", amount: 20000, message: "행복하자!" },
+        { id: "three", name: "한별", amount: 5000, message: "" },
+      ],
+      groupGift: { targetAmount: 50000 },
+    },
+  });
+  const tree = await recipient.Page({
+    params: Promise.resolve({ id: "order-id" }),
+    searchParams: Promise.resolve({}),
+  });
+  const messageCards = findElements(
+    tree,
+    (node) => node.type === "GroupGiftMessageCards",
+  )[0];
+
+  assert.equal(messageCards.props.heading, "2명의 마음을 모았어요");
+  assert.equal(messageCards.props.showParticipantBadges, true);
 });
 
 test("보낸 선물 상세 화면은 사용자 ID로 정리된 주문을 조회하고 배송지 카드를 렌더링하지 않는다", async () => {

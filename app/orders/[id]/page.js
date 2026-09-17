@@ -21,6 +21,14 @@ function getOrderView(value) {
   return ["sent", "seller"].includes(value) ? value : "";
 }
 
+function getGroupParticipantCount(contributions) {
+  const participantNames = contributions.map((contribution) => (
+    String(contribution.name ?? contribution.nickname ?? "").trim() || "익명의 친구"
+  ));
+
+  return new Set(participantNames).size;
+}
+
 export default async function OrderDetailPage({ params, searchParams }) {
   await connection();
   const { id } = await params;
@@ -40,6 +48,9 @@ export default async function OrderDetailPage({ params, searchParams }) {
   const isRecipient = user.id === order.recipientId;
   const isSender = user.id === order.senderId;
   const acceptancePath = order.card?.acceptancePath;
+  const groupParticipantCount = order.type === "group"
+    ? getGroupParticipantCount(order.contributions)
+    : 0;
 
   return (
     <section className="container narrow-page page-section">
@@ -74,7 +85,8 @@ export default async function OrderDetailPage({ params, searchParams }) {
       {order.type === "group" && (isSender || isRecipient) && (
         <GroupGiftMessageCards
           contributions={order.contributions}
-          heading={`${order.contributions.length}명의 마음을 모았어요`}
+          heading={`${groupParticipantCount}명의 마음을 모았어요`}
+          showParticipantBadges
           totalAmount={order.groupGift?.targetAmount ?? order.totalAmount}
         />
       )}

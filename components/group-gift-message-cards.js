@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GiftIcon } from "@/components/icons";
 
-const AUTO_SLIDE_INTERVAL_MS = 6500;
+const AUTO_SLIDE_INTERVAL_MS = 10000;
 const SWIPE_DISTANCE_PX = 45;
 
 function getContributionWidth(amount, totalAmount) {
@@ -22,11 +22,33 @@ function getContributionWidth(amount, totalAmount) {
   return Math.min(100, (contributionAmount / groupGiftAmount) * 100);
 }
 
+function getParticipantName(contribution) {
+  return String(contribution.name ?? contribution.nickname ?? "").trim() || "익명의 친구";
+}
+
+function getParticipants(contributions) {
+  const participantNames = new Set();
+
+  return contributions.reduce((participants, contribution) => {
+    const name = getParticipantName(contribution);
+
+    if (participantNames.has(name)) {
+      return participants;
+    }
+
+    participantNames.add(name);
+    participants.push({ id: contribution.id, name });
+    return participants;
+  }, []);
+}
+
 export default function GroupGiftMessageCards({
   contributions,
   heading,
+  showParticipantBadges = false,
   totalAmount,
 }) {
+  const participants = getParticipants(contributions);
   const messages = contributions.filter(
     (contribution) => String(contribution.message ?? "").trim(),
   );
@@ -125,6 +147,18 @@ export default function GroupGiftMessageCards({
       <div className="group-message-heading">
         <p className="eyebrow">축하 메시지</p>
         <h2>{heading ?? `${messages.length}개의 마음이 도착했어요`}</h2>
+        {showParticipantBadges && participants.length > 0 && (
+          <ul className="group-message-participants" aria-label="공동선물 참여자">
+            {participants.map((participant, index) => (
+              <li
+                className="group-message-participant-badge"
+                key={participant.id ?? `${participant.name}-${index}`}
+              >
+                {participant.name}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div
@@ -149,7 +183,7 @@ export default function GroupGiftMessageCards({
             style={{ transform: `translateX(-${activeIndex * 100}%)` }}
           >
             {messages.map((contribution, index) => {
-              const contributorName = contribution.name ?? contribution.nickname ?? "익명의 친구";
+              const contributorName = getParticipantName(contribution);
               const contributionWidth = getContributionWidth(
                 contribution.amount,
                 totalAmount,

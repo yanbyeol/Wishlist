@@ -1561,6 +1561,29 @@ img {
 .group-message-heading { margin-bottom: 12px; }
 .group-message-heading h2 { margin-top: 3px; font-size: 23px; }
 
+.group-message-participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.group-message-participant-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  color: rgba(89, 60, 72, 0.72);
+  border: 1px solid rgba(216, 129, 140, 0.18);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(255, 231, 228, 0.76), rgba(239, 234, 255, 0.76));
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .group-message-carousel {
   width: 100%;
   max-width: 450px;

@@ -614,7 +614,9 @@ test("공동선물 축하 메시지는 참여자별 카드 한 장을 캐러셀�
       { id: "one", nickname: "한별", amount: 30000, message: "생일 축하해!" },
       { id: "two", nickname: "민지", amount: 10000, message: "항상 행복하자 :)" },
       { id: "three", nickname: "도윤", amount: 10000, message: "   " },
+      { id: "four", nickname: "한별", amount: 5000, message: "" },
     ],
+    showParticipantBadges: true,
     totalAmount: 50000,
   });
   const cards = findElements(tree, (node) => node.props.className === "group-message-card");
@@ -629,6 +631,10 @@ test("공동선물 축하 메시지는 참여자별 카드 한 장을 캐러셀�
     (node) => String(node.props.className ?? "").startsWith("group-message-dot "),
   );
   const track = findElements(tree, (node) => node.props.className === "group-message-track")[0];
+  const participantBadges = findElements(
+    tree,
+    (node) => node.props.className === "group-message-participant-badge",
+  );
 
   assert.equal(cards.length, 2);
   assert.deepEqual(
@@ -649,6 +655,10 @@ test("공동선물 축하 메시지는 참여자별 카드 한 장을 캐러셀�
   assert.equal(track.props.style.transform, "translateX(-0%)");
   assert.equal(arrows.length, 2);
   assert.equal(dots.length, 2);
+  assert.deepEqual(
+    participantBadges.map((badge) => badge.props.children),
+    ["한별", "민지", "도윤"],
+  );
 
   const singleCardTree = GroupGiftMessageCards({
     contributions: [
@@ -660,4 +670,108 @@ test("공동선물 축하 메시지는 참여자별 카드 한 장을 캐러셀�
     findElements(singleCardTree, (node) => node.props.className === "group-message-arrow").length,
     0,
   );
+});
+
+test("공동선물 축하 메시지는 10초마다 순환하고 직접 이동하면 타이머를 다시 시작한다", () => {
+  let activeIndex = 0;
+  let stateCallIndex = 0;
+  let effectCleanup;
+  let nextTimerId = 1;
+  const intervalCalls = [];
+  const clearedTimers = [];
+  const timerCallbacks = new Map();
+  const contributions = [
+    { id: "one", nickname: "한별", amount: 30000, message: "생일 축하해!" },
+    { id: "two", nickname: "민지", amount: 20000, message: "늘 행복하자!" },
+  ];
+  const GroupGiftMessageCards = loadSource(
+    "components/group-gift-message-cards.js",
+    {
+      react: {
+        useEffect(effect) {
+          effectCleanup?.();
+          effectCleanup = effect();
+        },
+        useRef: (initialValue) => ({ current: initialValue }),
+        useState(initialValue) {
+          const currentCallIndex = stateCallIndex;
+          stateCallIndex += 1;
+
+          if (currentCallIndex === 0) {
+            return [activeIndex, (update) => {
+              activeIndex = typeof update === "function" ? update(activeIndex) : update;
+            }];
+          }
+
+          return [initialValue, () => {}];
+        },
+      },
+      "@/components/icons": { GiftIcon: () => null },
+    },
+    {
+      document: { visibilityState: "visible" },
+      window: {
+        clearInterval(timerId) {
+          clearedTimers.push(timerId);
+        },
+        matchMedia: () => ({ matches: false }),
+        setInterval(callback, milliseconds) {
+          const timerId = nextTimerId;
+          nextTimerId += 1;
+          intervalCalls.push(milliseconds);
+          timerCallbacks.set(timerId, callback);
+          return timerId;
+        },
+      },
+    },
+  ).default;
+
+  function renderCarousel() {
+    stateCallIndex = 0;
+    return GroupGiftMessageCards({ contributions, totalAmount: 50000 });
+  }
+
+  const firstTree = renderCarousel();
+  const nextButton = findElements(
+    firstTree,
+    (node) => node.props["aria-label"] === "다음 축하 메시지",
+  )[0];
+
+  assert.deepEqual(intervalCalls, [10000]);
+  nextButton.props.onClick();
+  assert.equal(activeIndex, 1);
+
+  renderCarousel();
+  assert.deepEqual(intervalCalls, [10000, 10000]);
+  assert.deepEqual(clearedTimers, [1]);
+
+  timerCallbacks.get(2)();
+  assert.equal(activeIndex, 0);
+
+  let singleCardTimerCount = 0;
+  const SingleCard = loadSource(
+    "components/group-gift-message-cards.js",
+    {
+      react: {
+        useEffect(effect) { effect(); },
+        useRef: (initialValue) => ({ current: initialValue }),
+        useState: (initialValue) => [initialValue, () => {}],
+      },
+      "@/components/icons": { GiftIcon: () => null },
+    },
+    {
+      document: { visibilityState: "visible" },
+      window: {
+        clearInterval() {},
+        matchMedia: () => ({ matches: false }),
+        setInterval() {
+          singleCardTimerCount += 1;
+          return 1;
+        },
+      },
+    },
+  ).default;
+
+  SingleCard({ contributions: [contributions[0]], totalAmount: 50000 });
+  assert.equal(singleCardTimerCount, 0);
 });
