@@ -39,10 +39,11 @@ export default async function SharedWishlistPage({ params }) {
               <ProductCard
                 key={product.id}
                 product={product}
-                detailsHref={`/shared/${token}/products/${product.id}`}
+                detailsHref={groupGift
+                  ? `/group-gifts/${groupGift.id}`
+                  : `/shared/${token}/products/${product.id}`}
                 showWishlistAction={false}
-                participationPath={groupGift ? `/group-gifts/${groupGift.id}` : ""}
-                participationTitle={groupGift?.title}
+                groupGiftStatus={groupGift?.status}
               />
             );
           })}

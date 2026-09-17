@@ -1,6 +1,6 @@
 import Link from "next/link";
 import ProductImage from "@/components/product-image";
-import ShareButton from "@/components/share-button";
+import StatusBadge from "@/components/status-badge";
 import WishlistButton from "@/components/wishlist-button";
 import { formatWon } from "@/lib/utils/format";
 
@@ -12,13 +12,23 @@ export default function ProductCard({
   detailsHref = `/products/${product.id}`,
   returnPath = "/",
   showWishlistAction = true,
-  participationPath = "",
-  participationTitle = "",
+  groupGiftStatus = "",
 }) {
+  let groupGiftStatusLabel = "";
+
+  if (groupGiftStatus === "funding") {
+    groupGiftStatusLabel = "공동선물 진행중";
+  } else if (["funded", "processing", "payment_failed"].includes(groupGiftStatus)) {
+    groupGiftStatusLabel = "목표 달성";
+  }
+
   return (
     <article className="product-card">
       <div className="product-card-media">
-        <Link href={detailsHref} aria-label={`${product.name} 상세 보기`}>
+        <Link
+          href={detailsHref}
+          aria-label={`${product.name} ${groupGiftStatusLabel ? "공동선물 보기" : "상세 보기"}`}
+        >
           <ProductImage src={product.imageUrl} alt={product.name} />
         </Link>
         {isOwned && <span className="own-product-badge">내 상품</span>}
@@ -40,15 +50,11 @@ export default function ProductCard({
           <strong>{formatWon(product.price)}</strong>
           <span>재고 {product.quantity}개</span>
         </div>
-        {participationPath && (
+        {groupGiftStatusLabel && (
           <div className="product-card-participation">
-            <ShareButton
-              path={participationPath}
-              title={participationTitle || product.name}
-              label="참여 링크 복사"
-              copyOnly
-              buttonClassName="button button-ghost button-full"
-            />
+            <StatusBadge tone={groupGiftStatus === "funding" ? "warm" : "accent"}>
+              {groupGiftStatusLabel}
+            </StatusBadge>
           </div>
         )}
       </div>
