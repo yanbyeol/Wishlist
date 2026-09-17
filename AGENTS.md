@@ -68,7 +68,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 아래 대상 필터의 반복 조회에는 기존 “DB 조회 조건 변경 시 Server Component 재실행” 규칙 대신 본 예외를 적용한다.
 
-- `/seller/orders`의 주문 상태 필터, `/seller/products`의 상품 상태 필터, `/`의 상품 정렬 필터에만 적용한다. 다른 화면·필터는 기존 규칙을 따른다.
+- `/seller/orders`의 주문 상태 필터, `/seller/products`의 상품 상태 필터, `/`의 상품 정렬·품절상품 제외·키워드 검색에만 적용한다. 다른 화면·필터는 기존 규칙을 따른다.
 - 최초 접속·새로고침은 async Server Component에서 `await connection()` 후 URL 기준으로 조회한다. 반복 조회는 Server Component 재실행 없이 Server Action과 최소 Client Component로 결과 영역만 갱신할 수 있다.
 - 필터는 URL을 단일 기준으로 관리하며 로컬 state로 중복 관리하지 않는다. 페이지 이동 없이 주소를 갱신하고, 새로고침·뒤로·앞으로 가기에 선택값과 결과를 동기화한다.
 - 조회 중 기존 화면·목록·스크롤을 유지하고 해당 영역에만 진행 상태를 표시한다. 실패 시 기존 목록을 유지하며 오래된 응답의 덮어쓰기를 방지한다.
