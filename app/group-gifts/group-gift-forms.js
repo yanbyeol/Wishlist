@@ -2,8 +2,10 @@
 
 import { useActionState, useState } from "react";
 import {
+  cancelGroupGiftAction,
   contributeGroupGiftAction,
   createGroupGiftAction,
+  extendGroupGiftAction,
   requestGroupGiftOtpAction,
   retryGroupGiftPaymentAction,
   verifyGroupGiftOtpAction,
@@ -65,7 +67,7 @@ export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
     <div className="guest-otp-section">
       <div>
         <h2>이메일로 간편 인증</h2>
-        <p>회원가입 없이 이 함께 선물하기에만 참여할 수 있어요.</p>
+        <p>인증 후 같은 이메일 계정으로 모든 선물 기능을 이용할 수 있어요.</p>
       </div>
       <form action={requestFormAction} className="stack-form">
         <label className="field">
@@ -113,6 +115,56 @@ export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
           </p>
           <button className="button button-primary button-full" type="submit" disabled={verifyPending}>
             {verifyPending ? "인증하는 중..." : "인증하고 참여하기"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export function GroupGiftManagement({ groupGiftId, status, minimumEndDate }) {
+  const extendAction = extendGroupGiftAction.bind(null, groupGiftId);
+  const cancelAction = cancelGroupGiftAction.bind(null, groupGiftId);
+  const [extendState, extendFormAction, extendPending] = useActionState(
+    extendAction,
+    initialState,
+  );
+  const [cancelState, cancelFormAction, cancelPending] = useActionState(
+    cancelAction,
+    initialState,
+  );
+
+  return (
+    <div className="group-gift-management">
+      <div>
+        <h2>함께 선물 관리</h2>
+        <p>개설자만 기간을 연장하거나 진행 중인 모집을 종료할 수 있어요.</p>
+      </div>
+      <form action={extendFormAction} className="stack-form group-gift-extension-form">
+        <label className="field">
+          <span>새 종료일</span>
+          <input name="endDate" type="date" min={minimumEndDate} required />
+        </label>
+        <p
+          className={`form-message ${extendState?.error ? "error-message" : ""}`}
+          aria-live="polite"
+        >
+          {extendState?.message}
+        </p>
+        <button className="button button-secondary button-full" type="submit" disabled={extendPending}>
+          {extendPending ? "기간을 연장하는 중..." : status === "goal_not_met" ? "기간을 연장하고 다시 열기" : "모집 기간 연장"}
+        </button>
+      </form>
+      {status === "funding" && (
+        <form action={cancelFormAction} className="group-gift-cancel-form">
+          <p
+            className={`form-message ${cancelState?.error ? "error-message" : ""}`}
+            aria-live="polite"
+          >
+            {cancelState?.message}
+          </p>
+          <button className="text-button danger-text" type="submit" disabled={cancelPending}>
+            {cancelPending ? "종료하는 중..." : "함께 선물 모집 종료"}
           </button>
         </form>
       )}

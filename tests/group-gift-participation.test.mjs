@@ -160,11 +160,9 @@ function loadGroupGiftPage({
   status = "funding",
   currentAmount = 10000,
   user = null,
-  guestSession = null,
   hasContribution = false,
 } = {}) {
   const contributionQueries = [];
-  const sessionQueries = [];
   const Page = loadSource("app/group-gifts/[id]/page.js", {
     "next/link": "Link",
     "next/server": { connection: async () => {} },
@@ -172,18 +170,13 @@ function loadGroupGiftPage({
     "@/app/group-gifts/group-gift-forms": {
       ContributionForm: "ContributionForm",
       GuestOtpForm: "GuestOtpForm",
+      GroupGiftManagement: "GroupGiftManagement",
       RetryGroupGiftForm: "RetryGroupGiftForm",
     },
     "@/components/group-gift-message-cards": "GroupGiftMessageCards",
     "@/components/product-image": "ProductImage",
     "@/components/share-button": "ShareButton",
     "@/components/status-badge": "StatusBadge",
-    "@/lib/group-gift-otp": {
-      async getGuestGroupGiftSession(groupGiftId) {
-        sessionQueries.push(groupGiftId);
-        return guestSession;
-      },
-    },
     "@/lib/group-gifts": {
       getGroupGiftById: async () => groupGift(status, currentAmount),
       async hasGroupGiftContribution(participant) {
@@ -204,7 +197,7 @@ function loadGroupGiftPage({
       getGroupGiftStatusLabel: (value) => value,
     },
   }).default;
-  return { Page, contributionQueries, sessionQueries };
+  return { Page, contributionQueries };
 }
 
 test("참여 합계가 0원인 공동선물 상세는 별도 상태 없이 참여 완료 시점을 안내한다", async () => {
@@ -292,14 +285,13 @@ test("공유 출처를 참여 및 결제 재처리 폼에 유지한다", async (
 });
 
 test("로그인 회원의 참여 완료 화면은 회원 ID의 DB 조회 결과를 사용한다", async () => {
-  const { Page, contributionQueries, sessionQueries } = loadGroupGiftPage({
+  const { Page, contributionQueries } = loadGroupGiftPage({
     user: { id: "member-id", name: "회원" },
     hasContribution: true,
   });
   const tree = await Page({ params: Promise.resolve({ id: "gift-id" }) });
   const contributionForm = findElements(tree, (node) => node.type === "ContributionForm")[0];
 
-  assert.equal(sessionQueries.length, 0);
   assert.equal(contributionQueries.length, 1);
   assert.equal(contributionQueries[0].groupGiftId, "gift-id");
   assert.equal(contributionQueries[0].userId, "member-id");
@@ -307,7 +299,7 @@ test("로그인 회원의 참여 완료 화면은 회원 ID의 DB 조회 결과�
   assert.equal(contributionForm.props.initialHasContribution, true);
 });
 
-test("비회원은 이메일 인증 세션이 생긴 뒤에만 인증 이메일로 참여 내역을 조회한다", async () => {
+test("비회원은 이메일 인증 전에는 참여할 수 없고 인증 후 회원 ID로 참여 내역을 조회한다", async () => {
   const beforeVerification = loadGroupGiftPage();
   const beforeTree = await beforeVerification.Page({ params: Promise.resolve({ id: "gift-id" }) });
 
@@ -316,20 +308,20 @@ test("비회원은 이메일 인증 세션이 생긴 뒤에만 인증 이메일�
   assert.equal(findElements(beforeTree, (node) => node.type === "ContributionForm").length, 0);
 
   const afterVerification = loadGroupGiftPage({
-    guestSession: { email: "friend@example.com" },
+    user: { id: "email-user-id", name: "친구", email: "friend@example.com" },
     hasContribution: true,
   });
   const afterTree = await afterVerification.Page({ params: Promise.resolve({ id: "gift-id" }) });
   const contributionForm = findElements(afterTree, (node) => node.type === "ContributionForm")[0];
 
   assert.equal(afterVerification.contributionQueries.length, 1);
-  assert.equal(afterVerification.contributionQueries[0].userId, undefined);
-  assert.equal(afterVerification.contributionQueries[0].guestEmail, "friend@example.com");
+  assert.equal(afterVerification.contributionQueries[0].userId, "email-user-id");
+  assert.equal(afterVerification.contributionQueries[0].guestEmail, undefined);
   assert.equal(contributionForm.props.initialHasContribution, true);
 });
 
 test("funding 이외 상태와 수령인에게는 참여 폼을 표시하지 않는다", async () => {
-  for (const status of ["funded", "processing", "payment_failed", "completed", "cancelled"]) {
+  for (const status of ["funded", "processing", "payment_failed", "completed", "goal_not_met", "cancelled"]) {
     const { Page } = loadGroupGiftPage({ status, user: { id: "member-id", name: "회원" } });
     const tree = await Page({ params: Promise.resolve({ id: "gift-id" }) });
     assert.equal(findElements(tree, (node) => node.type === "ContributionForm").length, 0);
@@ -338,6 +330,45 @@ test("funding 이외 상태와 수령인에게는 참여 폼을 표시하지 않
   const { Page } = loadGroupGiftPage({ user: { id: "recipient-id", name: "수령인" } });
   const tree = await Page({ params: Promise.resolve({ id: "gift-id" }) });
   assert.equal(findElements(tree, (node) => node.type === "ContributionForm").length, 0);
+});
+
+test("공동선물 개설자에게만 기간 연장·종료 관리 UI를 표시한다", async () => {
+  const organizer = loadGroupGiftPage({
+    user: { id: "organizer-id", name: "개설자" },
+  });
+  const organizerTree = await organizer.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+  });
+  const management = findElements(
+    organizerTree,
+    (node) => node.type === "GroupGiftManagement",
+  );
+
+  assert.equal(management.length, 1);
+  assert.equal(management[0].props.status, "funding");
+
+  const otherUser = loadGroupGiftPage({
+    user: { id: "other-user-id", name: "다른 사용자" },
+  });
+  const otherTree = await otherUser.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+  });
+  assert.equal(
+    findElements(otherTree, (node) => node.type === "GroupGiftManagement").length,
+    0,
+  );
+
+  const expired = loadGroupGiftPage({ status: "goal_not_met" });
+  const expiredTree = await expired.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+  });
+  assert.equal(
+    findElements(
+      expiredTree,
+      (node) => node.type === "Link" && node.props.href === "/login?callback=%2Fgroup-gifts%2Fgift-id",
+    ).length,
+    1,
+  );
 });
 
 test("완료된 공동선물의 회원 참여자에게 주문 결과 링크를 표시한다", async () => {
@@ -686,7 +717,7 @@ test("목표가 남은 참여 성공은 현재 화면에 성공 상태를 반환
   assert.deepEqual(failure.redirects, []);
 });
 
-test("목표 달성 후 회원과 이메일 인증 방문자의 기존 이동을 유지한다", async () => {
+test("목표 달성 후 비밀번호 회원과 이메일 인증 회원 모두 주문 결과로 이동한다", async () => {
   const member = loadContributionAction({
     result: { contributionId: "contribution-id", order: { id: "order-id" } },
   });
@@ -696,18 +727,18 @@ test("목표 달성 후 회원과 이메일 인증 방문자의 기존 이동을
   );
   assert.deepEqual(member.redirects, ["/orders/order-id"]);
 
-  const guest = loadContributionAction({
-    participant: { email: "friend@example.com" },
+  const emailUser = loadContributionAction({
+    participant: { id: "email-user-id", email: "friend@example.com" },
     result: { contributionId: "contribution-id", order: { id: "order-id" } },
   });
   await assert.rejects(
-    guest.actions.contributeGroupGiftAction("gift-id", {}, validContributionFormData()),
-    /REDIRECT:\/group-gifts\/gift-id/,
+    emailUser.actions.contributeGroupGiftAction("gift-id", {}, validContributionFormData()),
+    /REDIRECT:\/orders\/order-id/,
   );
-  assert.deepEqual(guest.redirects, ["/group-gifts/gift-id"]);
+  assert.deepEqual(emailUser.redirects, ["/orders/order-id"]);
 });
 
-test("이메일 인증·목표 달성·결제 재처리 뒤에도 공유 위시리스트 출처를 유지한다", async () => {
+test("이메일 인증은 공유 출처로 복귀하고 완료·결제 재처리는 주문 결과로 이동한다", async () => {
   const verification = loadContributionAction({ participant: { email: "friend@example.com" } });
   const verificationForm = new FormData();
   verificationForm.set("email", "friend@example.com");
@@ -722,7 +753,7 @@ test("이메일 인증·목표 달성·결제 재처리 뒤에도 공유 위시�
   ]);
 
   const contribution = loadContributionAction({
-    participant: { email: "friend@example.com" },
+    participant: { id: "email-user-id", email: "friend@example.com" },
     result: { contributionId: "contribution-id", order: { id: "order-id" } },
   });
   await assert.rejects(
@@ -731,23 +762,19 @@ test("이메일 인증·목표 달성·결제 재처리 뒤에도 공유 위시�
       {},
       validContributionFormData("/shared/shared-token"),
     ),
-    /REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token/,
+    /REDIRECT:\/orders\/order-id/,
   );
-  assert.deepEqual(contribution.redirects, [
-    "/group-gifts/gift-id?returnTo=%2Fshared%2Fshared-token",
-  ]);
+  assert.deepEqual(contribution.redirects, ["/orders/order-id"]);
 
   const retry = loadContributionAction({
-    participant: { email: "friend@example.com" },
+    participant: { id: "email-user-id", email: "friend@example.com" },
     retryResult: { id: "order-id" },
   });
   const retryForm = new FormData();
   retryForm.set("returnTo", "/shared/shared-token");
   await assert.rejects(
     retry.actions.retryGroupGiftPaymentAction("gift-id", {}, retryForm),
-    /REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token/,
+    /REDIRECT:\/orders\/order-id/,
   );
-  assert.deepEqual(retry.redirects, [
-    "/group-gifts/gift-id?returnTo=%2Fshared%2Fshared-token",
-  ]);
+  assert.deepEqual(retry.redirects, ["/orders/order-id"]);
 });

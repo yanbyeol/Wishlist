@@ -2,8 +2,13 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  requestEmailSignInOtp,
+  verifyEmailSignInOtp,
+} from "@/lib/group-gift-otp";
+import { normalizeUserEmail } from "@/lib/users";
 import { ensureWishlist } from "@/lib/wishlists";
-import { isValidEmail } from "@/lib/utils/validation";
+import { isValidEmail, isValidOtpCode } from "@/lib/utils/validation";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 
 function readCredentials(formData) {
@@ -54,6 +59,66 @@ export async function signInAction(previousState, formData) {
   }
 
   redirect(credentials.callback);
+}
+
+export async function requestEmailOtpAction(previousState, formData) {
+  const email = normalizeUserEmail(formData.get("email"));
+  const callback = sanitizeCallbackPath(formData.get("callback"), "/");
+
+  if (!isValidEmail(email)) {
+    return {
+      message: "올바른 이메일을 입력해 주세요.",
+      error: true,
+      email,
+      callback,
+    };
+  }
+
+  try {
+    const result = await requestEmailSignInOtp(email);
+    return {
+      requested: true,
+      email: result.email,
+      callback,
+      message: result.demoCode
+        ? `개발용 인증번호는 ${result.demoCode}입니다.`
+        : `${result.email}로 인증번호를 보냈습니다.`,
+      error: false,
+    };
+  } catch (error) {
+    return {
+      message: String(error?.message ?? "인증번호를 보내지 못했습니다."),
+      error: true,
+      email,
+      callback,
+    };
+  }
+}
+
+export async function verifyEmailOtpAction(previousState, formData) {
+  const email = normalizeUserEmail(formData.get("email"));
+  const code = String(formData.get("code") ?? "").trim();
+  const callback = sanitizeCallbackPath(formData.get("callback"), "/");
+
+  if (!isValidEmail(email) || !isValidOtpCode(code)) {
+    return {
+      message: "이메일과 6자리 인증번호를 확인해 주세요.",
+      error: true,
+      email,
+    };
+  }
+
+  try {
+    await verifyEmailSignInOtp(email, code);
+  } catch (error) {
+    return {
+      message: String(error?.message ?? "이메일 인증을 완료하지 못했습니다."),
+      error: true,
+      email,
+    };
+  }
+
+  redirect(callback);
 }
 
 export async function signUpAction(previousState, formData) {

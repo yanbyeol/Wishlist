@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 import {
   ContributionForm,
   GuestOtpForm,
+  GroupGiftManagement,
   RetryGroupGiftForm,
 } from "@/app/group-gifts/group-gift-forms";
 import GroupGiftMessageCards from "@/components/group-gift-message-cards";
 import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
-import { getGuestGroupGiftSession } from "@/lib/group-gift-otp";
 import { getGroupGiftById, hasGroupGiftContribution } from "@/lib/group-gifts";
 import { getCurrentUser } from "@/lib/session";
 import {
@@ -23,9 +23,15 @@ import { getSharedWishlistReturnPath } from "@/lib/utils/group-gift-navigation";
 
 function statusTone(status) {
   if (status === "completed") return "success";
-  if (status === "payment_failed" || status === "cancelled") return "danger";
+  if (["payment_failed", "goal_not_met", "cancelled"].includes(status)) return "danger";
   if (status === "funded" || status === "processing") return "accent";
   return "warm";
+}
+
+function getMinimumExtensionDate(expiresAt) {
+  const date = new Date(expiresAt);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 export default async function GroupGiftPage({ params, searchParams }) {
@@ -41,23 +47,20 @@ export default async function GroupGiftPage({ params, searchParams }) {
     notFound();
   }
 
-  const guestSession = user ? null : await getGuestGroupGiftSession(groupGift.id);
-
   const percent = Math.min(
     100,
     Math.round((groupGift.currentAmount / groupGift.targetAmount) * 100),
   );
   const isRecipient = user?.id === groupGift.recipientId;
+  const isOrganizer = user?.id === groupGift.organizerId;
   const groupGiftStarted = hasGroupGiftStarted(groupGift);
   const waitingForFirstContribution = groupGift.status === "funding" && !groupGiftStarted;
-  const hasContribution = user || guestSession
+  const hasContribution = user
     ? await hasGroupGiftContribution({
       groupGiftId: groupGift.id,
-      userId: user?.id,
-      guestEmail: guestSession?.email,
+      userId: user.id,
     })
     : false;
-  const guestNickname = guestSession?.email.split("@")[0].slice(0, 20);
 
   return (
     <section className="container page-section">
@@ -122,17 +125,23 @@ export default async function GroupGiftPage({ params, searchParams }) {
         </div>
 
         <aside className="participation-panel">
-          {groupGift.status === "funding" && !user && !guestSession && (
+          {["funding", "goal_not_met"].includes(groupGift.status) && isOrganizer && (
+            <GroupGiftManagement
+              groupGiftId={groupGift.id}
+              status={groupGift.status}
+              minimumEndDate={getMinimumExtensionDate(groupGift.expiresAt)}
+            />
+          )}
+          {groupGift.status === "funding" && !user && (
             <GuestOtpForm groupGiftId={groupGift.id} returnTo={returnTo} />
           )}
-          {groupGift.status === "funding" && (user || guestSession) && !isRecipient && (
+          {groupGift.status === "funding" && user && !isRecipient && (
             <>
               <h2>함께 선물하기</h2>
               <p>실제 결제 없이 선택한 금액만 목표에 반영됩니다.</p>
-              {guestSession && <p className="verified-participant">이메일 인증으로 참여 중이에요.</p>}
               <ContributionForm
                 groupGift={groupGift}
-                defaultNickname={user?.name ?? (guestNickname?.length >= 2 ? guestNickname : "게스트")}
+                defaultNickname={user.name}
                 initialHasContribution={hasContribution}
                 returnTo={returnTo}
               />
@@ -165,6 +174,20 @@ export default async function GroupGiftPage({ params, searchParams }) {
           )}
           {groupGift.status === "cancelled" && (
             <div className="stack-form"><h2>모집이 종료되었어요</h2><p>이 공동선물에는 더 이상 참여할 수 없습니다.</p></div>
+          )}
+          {groupGift.status === "goal_not_met" && !isOrganizer && (
+            <div className="stack-form">
+              <h2>목표 금액을 달성하지 못했어요</h2>
+              <p>모집 기간이 끝나 현재는 참여할 수 없습니다.</p>
+              {!user && (
+                <Link
+                  href={`/login?callback=${encodeURIComponent(`/group-gifts/${groupGift.id}`)}`}
+                  className="button button-secondary button-full"
+                >
+                  이메일 인증하고 관리하기
+                </Link>
+              )}
+            </div>
           )}
           {["funded", "processing"].includes(groupGift.status) && (
             <div className="stack-form"><h2>선물을 준비하고 있어요</h2><p>목표를 달성해 데모 결제와 축하 카드를 처리 중입니다.</p></div>

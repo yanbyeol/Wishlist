@@ -991,6 +991,35 @@ img {
 .auth-alternate { color: var(--muted); text-align: center; }
 .auth-alternate a { color: var(--primary-dark); font-weight: 800; }
 
+.auth-email-otp { margin-top: 24px; }
+
+.auth-method-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+}
+
+.auth-method-divider::before,
+.auth-method-divider::after {
+  height: 1px;
+  flex: 1;
+  content: "";
+  background: var(--border);
+}
+
+.auth-email-otp .otp-verification-form { margin-top: 18px; }
+
+.auth-email-otp-help {
+  margin: 14px 0 22px;
+  color: var(--muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  text-align: center;
+}
+
 .stack-form { display: flex; flex-direction: column; gap: 18px; }
 
 .form-card,
@@ -1828,6 +1857,31 @@ img {
   background: #eff8f1;
   font-size: var(--font-size-sm);
   font-weight: 800;
+}
+
+.group-gift-management {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.group-gift-management > div > p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.group-gift-extension-form { gap: 12px; }
+
+.group-gift-cancel-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .contribution-list { padding: 26px; }
