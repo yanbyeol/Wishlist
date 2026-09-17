@@ -66,6 +66,7 @@ test("최초 메인 요청은 connection 이후 URL 조건으로 조회하고 �
     "@/app/home-product-board": Board,
     "@/app/product-filter": filterFunctions,
     "@/components/icons": {},
+    "@/lib/orders": { getAddressRequiredGiftSummary: async () => null },
     "@/lib/products": { listProducts: async (filters) => { calls.push({ ...filters }); return [{ id: "product" }]; } },
     "@/lib/session": { getCurrentUser: async () => { calls.push("session"); return { id: "user", email: "private@example.com" }; } },
     "@/lib/wishlists": { getWishlistedProductIds: async (id) => { calls.push(id); return ["product"]; } },
@@ -77,6 +78,48 @@ test("최초 메인 요청은 connection 이후 URL 조건으로 조회하고 �
   assert.deepEqual({ ...board.props.user }, { id: "user" });
   assert.equal(board.props.initialFilters.keyword, "머그");
   assert.deepEqual(board.props.wishlistedIds, ["product"]);
+});
+
+test("로그인 홈은 배송지 입력이 필요한 최신 선물을 하나의 중요 배너로 표시한다", async () => {
+  function Board() {}
+  function Link() {}
+  const queriedUsers = [];
+  const Home = loadSource("app/page.js", {
+    "react/jsx-runtime": jsxRuntime,
+    "next/link": Link,
+    "next/server": { connection: async () => {} },
+    "@/app/home-product-board": Board,
+    "@/app/product-filter": filterFunctions,
+    "@/components/icons": {},
+    "@/lib/orders": {
+      async getAddressRequiredGiftSummary(userId) {
+        queriedUsers.push(userId);
+        return {
+          count: 2,
+          orderId: "order-id",
+          productName: "테스트 선물",
+          acceptancePath: "/gifts/accept/token",
+        };
+      },
+    },
+    "@/lib/products": { listProducts: async () => [] },
+    "@/lib/session": { getCurrentUser: async () => ({ id: "session-user" }) },
+    "@/lib/wishlists": { getWishlistedProductIds: async () => [] },
+  }).default;
+
+  const tree = await Home({ searchParams: Promise.resolve({}) });
+  const banner = findElements(
+    tree,
+    (node) => node.props.className === "container home-alert-banner",
+  )[0];
+  const addressLink = findElements(
+    banner,
+    (node) => node.type === Link && node.props.href === "/gifts/accept/token",
+  )[0];
+
+  assert.deepEqual(queriedUsers, ["session-user"]);
+  assert.ok(banner);
+  assert.ok(addressLink);
 });
 
 function findElements(tree, predicate) {

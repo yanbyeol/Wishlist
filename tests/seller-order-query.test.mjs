@@ -114,6 +114,12 @@ function loadOrders(documents) {
   const orders = loadSource("lib/orders.js", {
     "@/lib/ai/gift-card": {}, "@/lib/addresses": {}, "@/lib/wishlists": {},
     "@/lib/mongodb": { getDatabase: async () => database },
+    "@/lib/notifications": {
+      createNotificationSafely: async () => null,
+      getNotificationEventKey: (type, id) => `${type}:${id}`,
+      markNotificationEventReadSafely: async () => {},
+      NOTIFICATION_TYPES: {},
+    },
     "@/lib/seller-order-filter": { getSellerOrderStatuses },
     "@/lib/utils/mongo": { documentIdFilter, foreignKeyFilter, normalizeId },
     "@/lib/users": { findUserById: async (id) => ({ id, name: `회원 ${id}`, email: `${id}@example.com`, image: "불필요한 이미지" }) },

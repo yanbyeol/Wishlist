@@ -1,6 +1,7 @@
 import "./globals.css";
 import { connection } from "next/server";
 import SiteHeader from "@/components/site-header";
+import { getNotificationSummary } from "@/lib/notifications";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata = {
@@ -14,11 +15,19 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   await connection();
   const user = await getCurrentUser();
+  const notificationSummary = user
+    ? await getNotificationSummary(user.id)
+    : { notifications: [], unreadCount: 0 };
 
   return (
     <html lang="ko" data-scroll-behavior="smooth">
       <body>
-        <SiteHeader isLoggedIn={Boolean(user)} userName={user?.name ?? ""} />
+        <SiteHeader
+          isLoggedIn={Boolean(user)}
+          userName={user?.name ?? ""}
+          notifications={notificationSummary.notifications}
+          unreadNotificationCount={notificationSummary.unreadCount}
+        />
         <main className="site-main">{children}</main>
         <footer className="site-footer">
           <div className="container footer-inner">

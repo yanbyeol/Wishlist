@@ -41,6 +41,7 @@ export async function acceptGiftAction(token, previousState, formData) {
   }
 
   revalidatePath(`/orders/${order.id}`);
+  revalidatePath("/");
   revalidatePath("/mypage/gifts");
   revalidatePath("/seller/orders");
   redirect(`/orders/${order.id}`);

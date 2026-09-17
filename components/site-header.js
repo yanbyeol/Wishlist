@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { GiftIcon } from "@/components/icons";
+import NotificationMenu from "@/components/notification-menu";
 import { getModeFromPath } from "@/components/site-header-mode";
 import StatusBadge from "@/components/status-badge";
 
@@ -71,7 +72,12 @@ function AccountMenu({ currentMode, userName }) {
   );
 }
 
-export default function SiteHeader({ isLoggedIn, userName }) {
+export default function SiteHeader({
+  isLoggedIn,
+  userName,
+  notifications = [],
+  unreadNotificationCount = 0,
+}) {
   const pathname = usePathname() ?? "/";
   const currentMode = getModeFromPath(pathname);
   const homePath = currentMode === "seller" ? "/seller" : "/";
@@ -103,8 +109,15 @@ export default function SiteHeader({ isLoggedIn, userName }) {
                   <Link href="/products/new" className="seller-nav-link" aria-current={pathname === "/products/new" ? "page" : undefined}>상품 등록</Link>
                 </>
               )}
-              {/* 주소가 바뀌면 계정 메뉴를 새로 만들어 열린 메뉴가 남지 않게 합니다. */}
-              <AccountMenu key={pathname} currentMode={currentMode} userName={userName} />
+              <div className="header-user-controls">
+                {/* 주소가 바뀌면 열린 메뉴와 로컬 알림 상태를 새로 동기화합니다. */}
+                <NotificationMenu
+                  key={`notifications-${pathname}`}
+                  initialNotifications={notifications}
+                  initialUnreadCount={unreadNotificationCount}
+                />
+                <AccountMenu key={`account-${pathname}`} currentMode={currentMode} userName={userName} />
+              </div>
             </>
           ) : (
             <>

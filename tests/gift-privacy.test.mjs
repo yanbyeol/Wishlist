@@ -122,6 +122,15 @@ function createOrdersModule(document = orderDocument) {
     "@/lib/ai/gift-card": { generateGiftCard: async () => null },
     "@/lib/addresses": { getDefaultAddress: async () => null },
     "@/lib/mongodb": { getDatabase: async () => db },
+    "@/lib/notifications": {
+      createNotificationSafely: async () => null,
+      getNotificationEventKey: (type, id) => `${type}:${id}`,
+      markNotificationEventReadSafely: async () => {},
+      NOTIFICATION_TYPES: {
+        GIFT_RECEIVED: "GIFT_RECEIVED",
+        GIFT_ADDRESS_REQUIRED: "GIFT_ADDRESS_REQUIRED",
+      },
+    },
     "@/lib/seller-order-filter": { getSellerOrderStatuses: (statuses) => statuses },
     "@/lib/users": {
       findUserById: async (id) => ({ id, name: id === "recipient-id" ? "받는 사람" : "보낸 사람" }),
@@ -256,6 +265,7 @@ function loadOrderPage({ userId, address, view = "" }) {
     "next/link": "Link",
     "next/server": { connection: async () => {} },
     "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
+    "@/components/group-gift-message-cards": "GroupGiftMessageCards",
     "@/components/product-image": "ProductImage",
     "@/components/share-button": "ShareButton",
     "@/components/status-badge": "StatusBadge",

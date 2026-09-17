@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
+import GroupGiftMessageCards from "@/components/group-gift-message-cards";
 import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
@@ -38,10 +39,6 @@ export default async function OrderDetailPage({ params, searchParams }) {
   const isRecipient = user.id === order.recipientId;
   const isSender = user.id === order.senderId;
   const acceptancePath = order.card?.acceptancePath;
-  const contributionTargetAmount = order.groupGift?.targetAmount ?? order.totalAmount;
-  const contributorNames = [...new Set(
-    order.contributions.map((contribution) => contribution.name),
-  )].join(", ");
 
   return (
     <section className="container narrow-page page-section">
@@ -56,19 +53,24 @@ export default async function OrderDetailPage({ params, searchParams }) {
         </StatusBadge>
       </div>
 
-      {order.card && (isSender || isRecipient) && (
+      {order.card && order.type !== "group" && (isSender || isRecipient) && (
         <div className={`gift-card gift-card-${order.card.theme ?? "warm-confetti"}`}>
           <span className="gift-card-sparkle">✦</span>
           <p>WishMate celebration card</p>
           <h2>{order.card.title}</h2>
           <blockquote>{order.card.message}</blockquote>
           <small>
-            {order.type === "group" && contributorNames
-              ? `함께 보낸 사람 · ${contributorNames}`
-              : `보낸 사람 · ${order.sender?.name ?? "친구"}`}
+            {`보낸 사람 · ${order.sender?.name ?? "친구"}`}
             {` · AI 축하 카드 · ${order.card.generationProvider === "mock" ? "데모 생성" : order.card.generationProvider}`}
           </small>
         </div>
+      )}
+
+      {order.type === "group" && (isSender || isRecipient) && (
+        <GroupGiftMessageCards
+          contributions={order.contributions}
+          heading={`${order.contributions.length}명의 마음을 모았어요`}
+        />
       )}
 
       <div className="info-card order-result-card">
@@ -87,35 +89,6 @@ export default async function OrderDetailPage({ params, searchParams }) {
           </p>
         </div>
       </div>
-
-      {order.type === "group" && order.contributions.length > 0 && (
-        <div className="info-card order-contribution-results">
-          <p className="eyebrow">함께 선물한 친구들</p>
-          <h2>{order.contributions.length}명의 마음을 모았어요</h2>
-          <ul>
-            {order.contributions.map((contribution) => (
-              <li key={contribution.id}>
-                <strong>{contribution.name}</strong>
-                <div
-                  className="contribution-progress-track"
-                  role="img"
-                  aria-label={`${contribution.name}님의 기여도`}
-                >
-                  <span
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        (contribution.amount / contributionTargetAmount) * 100,
-                      )}%`,
-                    }}
-                  />
-                </div>
-                <blockquote>“{contribution.message || "함께 선물했어요."}”</blockquote>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {order.status === "awaiting_address" && acceptancePath && (
         <div className="action-panel">

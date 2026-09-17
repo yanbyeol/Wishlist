@@ -6,6 +6,7 @@ import {
   GuestOtpForm,
   RetryGroupGiftForm,
 } from "@/app/group-gifts/group-gift-forms";
+import GroupGiftMessageCards from "@/components/group-gift-message-cards";
 import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
@@ -113,45 +114,10 @@ export default async function GroupGiftPage({ params, searchParams }) {
             <div className="progress-meta"><strong>{percent}% 달성</strong><span>{formatDate(groupGift.expiresAt)}까지</span></div>
           </div>
 
-          <div className="info-card contribution-list">
-            <div className="section-heading compact-section-heading">
-              <div><p className="eyebrow">함께 선물한 친구들</p><h2>{groupGift.contributions.length}명이 참여했어요</h2></div>
-            </div>
-            {groupGift.contributions.length > 0 ? (
-              <ul>
-                {groupGift.contributions.map((contribution) => (
-                  <li
-                    key={contribution.id}
-                    className={groupGift.status === "completed" ? "completed-contribution" : undefined}
-                  >
-                    {groupGift.status !== "completed" && (
-                      <span className="contributor-avatar">{contribution.nickname.slice(0, 1)}</span>
-                    )}
-                    <div>
-                      <strong>{contribution.nickname}</strong>
-                      {groupGift.status === "completed" && (
-                        <div
-                          className="contribution-progress-track"
-                          role="img"
-                          aria-label={`${contribution.nickname}님의 기여도`}
-                        >
-                          <span
-                            style={{
-                              width: `${Math.min(100, (contribution.amount / groupGift.targetAmount) * 100)}%`,
-                            }}
-                          />
-                        </div>
-                      )}
-                      <p>{contribution.message || "함께 선물했어요."}</p>
-                    </div>
-                    {groupGift.status !== "completed" && <span>{formatWon(contribution.amount)}</span>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="muted-copy">첫 번째로 함께 선물해 주세요.</p>
-            )}
-          </div>
+          <GroupGiftMessageCards
+            contributions={groupGift.contributions}
+            heading={`${groupGift.contributions.length}명이 참여했어요`}
+          />
         </div>
 
         <aside className="participation-panel">

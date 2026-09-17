@@ -90,6 +90,11 @@ test("기존 참여 여부는 회원 ID 또는 인증 이메일과 paid 상태�
   const { hasGroupGiftContribution } = loadSource("lib/group-gifts.js", {
     "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
     "@/lib/mongodb": { getDatabase: async () => db },
+    "@/lib/notifications": {
+      createNotificationSafely: async () => null,
+      getNotificationEventKey: (type, id) => `${type}:${id}`,
+      NOTIFICATION_TYPES: {},
+    },
     "@/lib/orders": { createMockOrder: async () => null },
     "@/lib/products": { getProductById: async () => null },
     "@/lib/users": { findUserById: async () => null },
@@ -169,6 +174,7 @@ function loadGroupGiftPage({
       GuestOtpForm: "GuestOtpForm",
       RetryGroupGiftForm: "RetryGroupGiftForm",
     },
+    "@/components/group-gift-message-cards": "GroupGiftMessageCards",
     "@/components/product-image": "ProductImage",
     "@/components/share-button": "ShareButton",
     "@/components/status-badge": "StatusBadge",

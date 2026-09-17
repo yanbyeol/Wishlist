@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import HomeProductBoard from "@/app/home-product-board";
 import { getProductFilters } from "@/app/product-filter";
 import { ArrowIcon, GiftIcon, SparkleIcon } from "@/components/icons";
+import { getAddressRequiredGiftSummary } from "@/lib/orders";
 import { listProducts } from "@/lib/products";
 import { getCurrentUser } from "@/lib/session";
 import { getWishlistedProductIds } from "@/lib/wishlists";
@@ -11,13 +12,32 @@ export default async function Home({ searchParams }) {
   await connection();
   const filters = getProductFilters(await searchParams);
   const user = await getCurrentUser();
-  const [products, wishlistedIds] = await Promise.all([
+  const [products, wishlistedIds, addressRequiredGift] = await Promise.all([
     listProducts({ category: filters.category, query: filters.keyword, sort: filters.sort, excludeSoldOut: filters.excludeSoldOut }),
     user ? getWishlistedProductIds(user.id) : [],
+    user ? getAddressRequiredGiftSummary(user.id) : null,
   ]);
 
   return (
     <>
+      {addressRequiredGift && (
+        <aside className="home-alert-wrap" aria-label="배송지 입력이 필요한 선물">
+          <div className="container home-alert-banner">
+            <span className="home-alert-icon"><GiftIcon size={24} /></span>
+            <div className="home-alert-copy">
+              <h2>선물이 도착했어요!</h2>
+              <p>선물을 받으려면 배송지를 입력해주세요.</p>
+              {addressRequiredGift.count > 1 && (
+                <small>배송지를 기다리는 선물이 {addressRequiredGift.count}개 있어요.</small>
+              )}
+            </div>
+            <Link href={addressRequiredGift.acceptancePath} className="button button-primary">
+              배송지 입력하기
+            </Link>
+          </div>
+        </aside>
+      )}
+
       <section className="hero-section">
         <div className="container hero-grid">
           <div className="hero-copy">

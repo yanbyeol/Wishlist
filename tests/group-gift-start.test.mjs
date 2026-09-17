@@ -42,6 +42,11 @@ function groupGiftDependencies(db) {
   return {
     "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
     "@/lib/mongodb": { getDatabase: async () => db },
+    "@/lib/notifications": {
+      createNotificationSafely: async () => null,
+      getNotificationEventKey: (type, id) => `${type}:${id}`,
+      NOTIFICATION_TYPES: {},
+    },
     "@/lib/orders": { createMockOrder: async () => null },
     "@/lib/products": { getProductById: async () => null },
     "@/lib/users": { findUserById: async () => null },

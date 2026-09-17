@@ -9,6 +9,7 @@
  * 상품/주문 컬렉션은 현재 lib 모듈에서 사용하는 스키마와 동일하게 유지한다.
  */
 const { resolve } = require("node:path");
+const { createHash } = require("node:crypto");
 const assert = require("node:assert/strict");
 const { MongoClient, ObjectId } = require("mongodb");
 const { loadEnvConfig } = require("@next/env");
@@ -18,6 +19,13 @@ loadEnvConfig(resolve(__dirname, ".."), true);
 const id = (number) => new ObjectId(`57495348${number.toString(16).padStart(16, "0")}`);
 const now = new Date("2026-09-15T00:00:00.000Z");
 const document = (number, fields) => ({ _id: id(number), ...fields, createdAt: now, updatedAt: now });
+const notificationDocument = (eventKey, fields) => ({
+  _id: new ObjectId(createHash("sha256").update(eventKey).digest("hex").slice(0, 24)),
+  ...fields,
+  eventKey,
+  createdAt: now,
+  updatedAt: now,
+});
 
 async function createSeed() {
   const { hashPassword } = await import("better-auth/crypto");
@@ -122,7 +130,28 @@ async function createSeed() {
     acceptancePath: `/gifts/accept/wishmate-demo-gift-${index + 1}`,
     acceptedAt: order.status === "awaiting_address" ? null : now,
   }));
-  return { user, account, categories, products, addresses, wishlists, wishlistItems, groupGifts, contributions, orders, giftCards };
+  const notifications = [
+    notificationDocument(`GIFT_RECEIVED:${id(92).toHexString()}`, {
+      userId: id(1).toHexString(), type: "GIFT_RECEIVED", title: "선물이 도착했어요!",
+      message: "세라믹 머그 2종 세트 선물이 도착했습니다.", link: `/orders/${id(92).toHexString()}`, read: false,
+    }),
+    notificationDocument(`GIFT_ADDRESS_REQUIRED:${id(92).toHexString()}`, {
+      userId: id(1).toHexString(), type: "GIFT_ADDRESS_REQUIRED", title: "배송지를 입력해주세요.",
+      message: "세라믹 머그 2종 세트 선물을 받으려면 배송지를 입력해 주세요.",
+      link: "/gifts/accept/wishmate-demo-gift-2", read: false,
+    }),
+    notificationDocument(`GROUP_GIFT_COMPLETED:${id(72).toHexString()}`, {
+      userId: id(1).toHexString(), type: "GROUP_GIFT_COMPLETED", title: "공동선물이 완성됐어요!",
+      message: "민지의 새 출발을 응원해의 목표 금액이 모두 모였습니다.",
+      link: `/orders/${id(93).toHexString()}`, read: true, readAt: now,
+    }),
+    notificationDocument(`GROUP_GIFT_CONTRIBUTION:${id(84).toHexString()}`, {
+      userId: id(2).toHexString(), type: "GROUP_GIFT_CONTRIBUTION",
+      title: "도윤님이 공동선물에 참여했어요.", message: "민지의 새 출발을 응원해에 새로운 마음이 모였습니다.",
+      link: `/group-gifts/${id(72).toHexString()}`, read: false,
+    }),
+  ];
+  return { user, account, categories, products, addresses, wishlists, wishlistItems, groupGifts, contributions, orders, giftCards, notifications };
 }
 
 function validate(data) {
@@ -137,6 +166,7 @@ function validate(data) {
     contributions: { groupGiftId: "groupGifts", userId: "user" },
     orders: { senderId: "user", recipientId: "user", sellerId: "user", productId: "products", groupGiftId: "groupGifts" },
     giftCards: { orderId: "orders", recipientId: "user" },
+    notifications: { userId: "user" },
   };
   for (const [collection, fields] of Object.entries(references)) {
     for (const entry of data[collection]) {
