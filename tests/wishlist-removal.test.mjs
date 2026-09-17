@@ -321,6 +321,7 @@ test("진행 중 상품의 해제 시도는 요청 전에 기존 snackbar 안내
   const react = {
     useActionState: () => [null, "serverAction", false],
     useEffect: () => {},
+    useRef: (initialValue) => ({ current: initialValue }),
     useState(initialValue) {
       const currentIndex = stateCursor;
       stateCursor += 1;
@@ -373,4 +374,90 @@ test("진행 중 상품의 해제 시도는 요청 전에 기존 snackbar 안내
   assert.equal(intent.props.value, "remove");
   assert.equal(feedback.props.role, "status");
   assert.equal(feedback.props.children[0].props.children, message);
+});
+
+test("페이지 이동 후 위시리스트 요청이 끝나면 제출 직전 스크롤 위치를 복원한다", () => {
+  const stateValues = [];
+  const refValues = [];
+  const effects = [];
+  const scrollCalls = [];
+  let stateCursor = 0;
+  let refCursor = 0;
+  let actionState = null;
+  let pending = false;
+
+  const react = {
+    useActionState: () => [actionState, "serverAction", pending],
+    useEffect(effect) {
+      effects.push(effect);
+    },
+    useRef(initialValue) {
+      const currentIndex = refCursor;
+      refCursor += 1;
+      if (!(currentIndex in refValues)) refValues[currentIndex] = { current: initialValue };
+      return refValues[currentIndex];
+    },
+    useState(initialValue) {
+      const currentIndex = stateCursor;
+      stateCursor += 1;
+      if (!(currentIndex in stateValues)) stateValues[currentIndex] = initialValue;
+      return [stateValues[currentIndex], (nextValue) => {
+        stateValues[currentIndex] = typeof nextValue === "function"
+          ? nextValue(stateValues[currentIndex])
+          : nextValue;
+      }];
+    },
+  };
+  const browserWindow = {
+    scrollX: 12,
+    scrollY: 1248,
+    scrollTo(x, y) {
+      scrollCalls.push({ x, y });
+    },
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+  };
+  const WishlistButton = loadSource("components/wishlist-button.js", {
+    react,
+    "react-dom": { createPortal: (children) => children },
+    "next/link": "Link",
+    "@/app/wishlist/actions": { toggleWishlistAction: async () => null },
+    "@/components/icons": { HeartIcon: "HeartIcon" },
+    "@/lib/constants": { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE: message },
+  }, {
+    document: { body: {} },
+    window: browserWindow,
+  }).default;
+  const props = {
+    productId: "product-id",
+    isWishlisted: false,
+    removalBlocked: false,
+    user: { id: "recipient-id" },
+    returnPath: "/?page=2",
+    compact: true,
+  };
+
+  function render() {
+    stateCursor = 0;
+    refCursor = 0;
+    effects.length = 0;
+    return WishlistButton(props);
+  }
+
+  const initialTree = render();
+  const form = findElements(initialTree, (node) => node.type === "form")[0];
+  form.props.onSubmit({ preventDefault() {} });
+
+  pending = true;
+  render();
+  for (const effect of effects) effect();
+  assert.deepEqual(scrollCalls, []);
+
+  browserWindow.scrollY = 0;
+  pending = false;
+  actionState = { added: true };
+  render();
+  for (const effect of effects) effect();
+
+  assert.deepEqual(scrollCalls, [{ x: 12, y: 1248 }]);
 });

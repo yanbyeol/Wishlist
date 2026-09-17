@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toggleWishlistAction } from "@/app/wishlist/actions";
 import { HeartIcon } from "@/components/icons";
@@ -18,6 +18,7 @@ export default function WishlistButton({
   const [state, formAction, pending] = useActionState(toggleWishlistAction, null);
   const [dismissedState, setDismissedState] = useState(null);
   const [clientMessage, setClientMessage] = useState("");
+  const submittedScrollPosition = useRef(null);
   let serverMessage = "";
 
   if (dismissedState !== state) {
@@ -42,8 +43,22 @@ export default function WishlistButton({
     return () => window.clearTimeout(timer);
   }, [feedbackMessage, state]);
 
+  useEffect(() => {
+    if (pending || !submittedScrollPosition.current) return;
+
+    const { x, y } = submittedScrollPosition.current;
+    submittedScrollPosition.current = null;
+    window.scrollTo(x, y);
+  }, [pending]);
+
   function handleSubmit(event) {
-    if (!isWishlisted || !removalBlocked) return;
+    if (!isWishlisted || !removalBlocked) {
+      submittedScrollPosition.current = {
+        x: window.scrollX,
+        y: window.scrollY,
+      };
+      return;
+    }
 
     event.preventDefault();
     setClientMessage(GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE);
