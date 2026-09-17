@@ -17,6 +17,7 @@ import {
   formatWon,
   getGroupGiftStatusLabel,
 } from "@/lib/utils/format";
+import { getSharedWishlistReturnPath } from "@/lib/utils/group-gift-navigation";
 
 function statusTone(status) {
   if (status === "completed") return "success";
@@ -25,9 +26,10 @@ function statusTone(status) {
   return "warm";
 }
 
-export default async function GroupGiftPage({ params }) {
+export default async function GroupGiftPage({ params, searchParams }) {
   await connection();
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const returnTo = getSharedWishlistReturnPath(query?.returnTo);
   const [groupGift, user] = await Promise.all([
     getGroupGiftById(id),
     getCurrentUser(),
@@ -55,6 +57,9 @@ export default async function GroupGiftPage({ params }) {
 
   return (
     <section className="container page-section">
+      {returnTo && (
+        <Link href={returnTo} className="back-link">← 위시리스트로 돌아가기</Link>
+      )}
       <div className="page-heading heading-with-action">
         <div>
           <p className="eyebrow">함께 선물하기</p>
@@ -138,7 +143,7 @@ export default async function GroupGiftPage({ params }) {
 
         <aside className="participation-panel">
           {groupGift.status === "funding" && !user && !guestSession && (
-            <GuestOtpForm groupGiftId={groupGift.id} />
+            <GuestOtpForm groupGiftId={groupGift.id} returnTo={returnTo} />
           )}
           {groupGift.status === "funding" && (user || guestSession) && !isRecipient && (
             <>
@@ -149,6 +154,7 @@ export default async function GroupGiftPage({ params }) {
                 groupGift={groupGift}
                 defaultNickname={user?.name ?? (guestNickname?.length >= 2 ? guestNickname : "게스트")}
                 initialHasContribution={hasContribution}
+                returnTo={returnTo}
               />
             </>
           )}
@@ -159,7 +165,11 @@ export default async function GroupGiftPage({ params }) {
             <div className="stack-form">
               <h2>데모 결제를 다시 처리해 주세요</h2>
               <p>참여 내역이 있는 사용자만 다시 시도할 수 있습니다.</p>
-              {hasContribution ? <RetryGroupGiftForm groupGiftId={groupGift.id} /> : <p className="muted-copy">참여한 사용자가 다시 처리할 수 있어요.</p>}
+              {hasContribution ? (
+                <RetryGroupGiftForm groupGiftId={groupGift.id} returnTo={returnTo} />
+              ) : (
+                <p className="muted-copy">참여한 사용자가 다시 처리할 수 있어요.</p>
+              )}
             </div>
           )}
           {groupGift.status === "completed" && (

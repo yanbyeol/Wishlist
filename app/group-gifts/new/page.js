@@ -8,6 +8,10 @@ import { getProductById } from "@/lib/products";
 import { requireUser } from "@/lib/session";
 import { findUserById } from "@/lib/users";
 import { formatWon, sanitizeCallbackPath } from "@/lib/utils/format";
+import {
+  getGroupGiftPath,
+  getSharedWishlistReturnPath,
+} from "@/lib/utils/group-gift-navigation";
 import { isProductInWishlist } from "@/lib/wishlists";
 
 export const metadata = { title: "함께 선물하기" };
@@ -17,7 +21,19 @@ export default async function NewGroupGiftPage({ searchParams }) {
   const query = await searchParams;
   const productId = typeof query.product === "string" ? query.product : "";
   const recipientId = typeof query.recipient === "string" ? query.recipient : "";
-  const callback = `/group-gifts/new?product=${encodeURIComponent(productId)}&recipient=${encodeURIComponent(recipientId)}`;
+  const from = sanitizeCallbackPath(query.from, "/");
+  const returnTo = getSharedWishlistReturnPath(query.returnTo);
+  const callbackParams = new URLSearchParams({ product: productId, recipient: recipientId });
+
+  if (from !== "/") {
+    callbackParams.set("from", from);
+  }
+
+  if (returnTo) {
+    callbackParams.set("returnTo", returnTo);
+  }
+
+  const callback = `/group-gifts/new?${callbackParams}`;
   const user = await requireUser(callback);
   const [product, recipient, isWishlisted] = await Promise.all([
     getProductById(productId),
@@ -36,10 +52,8 @@ export default async function NewGroupGiftPage({ searchParams }) {
   const existing = await findOpenGroupGiftForProduct(recipient.id, product.id);
 
   if (existing) {
-    redirect(`/group-gifts/${existing.id}`);
+    redirect(getGroupGiftPath(existing.id, returnTo));
   }
-
-  const from = sanitizeCallbackPath(query.from, "/");
 
   return (
     <section className="container page-section checkout-grid">
@@ -49,7 +63,12 @@ export default async function NewGroupGiftPage({ searchParams }) {
           <h1>함께 선물하기</h1>
           <p>링크를 공유하고 친구들과 목표 금액을 함께 채워 보세요.</p>
         </div>
-        <CreateGroupGiftForm product={product} recipient={recipient} from={from} />
+        <CreateGroupGiftForm
+          product={product}
+          recipient={recipient}
+          from={from}
+          returnTo={returnTo}
+        />
       </div>
       <aside className="order-summary-card">
         <ProductImage src={product.imageUrl} alt={product.name} />

@@ -29,7 +29,7 @@ const wishlist = {
   items: [{ product }],
 };
 
-function loadSource(path, dependencies) {
+function loadModule(path, dependencies) {
   const filename = fileURLToPath(new URL(`../${path}`, import.meta.url));
   const { code } = transformSync(readFileSync(filename, "utf8"), {
     filename,
@@ -44,14 +44,24 @@ function loadSource(path, dependencies) {
   runInNewContext(code, {
     module: sourceModule,
     exports: sourceModule.exports,
+    URLSearchParams,
     require(name) {
       if (name === "react/jsx-runtime") return jsxRuntime;
       if (name in dependencies) return dependencies[name];
       throw new Error(`테스트에 등록되지 않은 의존성: ${name}`);
     },
   });
-  return sourceModule.exports.default;
+  return sourceModule.exports;
 }
+
+function loadSource(path, dependencies) {
+  return loadModule(path, dependencies).default;
+}
+
+const formatFunctions = loadModule("lib/utils/format.js", {});
+const navigationFunctions = loadModule("lib/utils/group-gift-navigation.js", {
+  "@/lib/utils/format": formatFunctions,
+});
 
 function findElements(tree, predicate) {
   const found = [];
@@ -123,6 +133,7 @@ function loadListPage(mode, loadedWishlist, groupGifts) {
         return groupGifts;
       },
     },
+    "@/lib/utils/group-gift-navigation": navigationFunctions,
     "@/lib/session": {
       async requireUser(callback) {
         assert.equal(callback, "/wishlist");
@@ -164,11 +175,14 @@ for (const mode of ["shared", "own"]) {
 
     for (let index = 0; index < openStatuses.length; index += 1) {
       const status = openStatuses[index];
-      assert.equal(cards[index].props.detailsHref, `/group-gifts/gift-${status}`);
+      const expectedGroupGiftPath = mode === "shared"
+        ? `/group-gifts/gift-${status}?returnTo=%2Fshared%2Fshared-token`
+        : `/group-gifts/gift-${status}`;
+      assert.equal(cards[index].props.detailsHref, expectedGroupGiftPath);
       assert.equal(cards[index].props.groupGiftStatus, status);
       const cardTree = ProductCard(cards[index].props);
       const links = findElements(cardTree, (node) => node.type === "Link");
-      assert.deepEqual(links.map((link) => link.props.href), [`/group-gifts/gift-${status}`, `/group-gifts/gift-${status}`]);
+      assert.deepEqual(links.map((link) => link.props.href), [expectedGroupGiftPath, expectedGroupGiftPath]);
       assert.equal(findElements(cardTree, (node) => node.type === "ShareButton").length, 0);
       assert.equal(findElements(cardTree, (node) => node.type === "WishlistButton").length, mode === "shared" ? 0 : 1);
     }
@@ -218,6 +232,7 @@ function loadSharedProductPage({ groupGift = null, loadedWishlist = wishlist, cu
         return currentUser;
       },
     },
+    "@/lib/utils/group-gift-navigation": navigationFunctions,
     "@/lib/utils/format": { formatWon: (price) => `${price}원` },
     "@/lib/wishlists": { async getSharedWishlist() { return loadedWishlist; } },
   });
@@ -230,7 +245,7 @@ for (const status of openStatuses) {
       const { Page, calls } = loadSharedProductPage({ groupGift: { id: "gift-id", status }, currentUser });
       await assert.rejects(
         Page({ params: Promise.resolve({ token: "shared-token", id: product.id }) }),
-        /^Error: REDIRECT:\/group-gifts\/gift-id$/,
+        /^Error: REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token$/,
       );
       assert.equal(calls.connections, 1);
       assert.equal(calls.userQueries, 0);
@@ -243,7 +258,7 @@ test("공동선물이 없는 공유 상품은 로그인 여부와 수령인에 �
   const from = encodeURIComponent("/shared/shared-token/products/product-id");
   const friendOrderPath = `/orders/new?product=product-id&recipient=recipient-id&from=${from}`;
   const selfOrderPath = `/orders/new?product=product-id&mode=self&from=${from}`;
-  const newGroupPath = `/group-gifts/new?product=product-id&recipient=recipient-id&from=${from}`;
+  const newGroupPath = `/group-gifts/new?product=product-id&recipient=recipient-id&from=${from}&returnTo=%2Fshared%2Fshared-token`;
 
   for (const currentUser of [null, user, { id: "friend-id" }]) {
     const { Page } = loadSharedProductPage({ currentUser });
@@ -256,6 +271,68 @@ test("공동선물이 없는 공유 상품은 로그인 여부와 수령인에 �
     assert.equal(findElements(tree, (node) => node.type === "ShareButton").length, 0);
     if (currentUser?.id !== user.id) assert.equal(actionLinks[1].props.children, "함께 선물하기");
   }
+});
+
+function loadNewGroupGiftPage({ existingGroupGift = null } = {}) {
+  const calls = { callbacks: [] };
+  const Page = loadSource("app/group-gifts/new/page.js", {
+    "next/link": "Link",
+    "next/server": { connection: async () => {} },
+    "next/navigation": {
+      notFound() { throw new Error("NOT_FOUND"); },
+      redirect(path) { throw new Error(`REDIRECT:${path}`); },
+    },
+    "@/app/group-gifts/group-gift-forms": { CreateGroupGiftForm: "CreateGroupGiftForm" },
+    "@/components/product-image": "ProductImage",
+    "@/lib/group-gifts": {
+      findOpenGroupGiftForProduct: async () => existingGroupGift,
+    },
+    "@/lib/products": { getProductById: async () => product },
+    "@/lib/session": {
+      async requireUser(callback) {
+        calls.callbacks.push(callback);
+        return { id: "organizer-id" };
+      },
+    },
+    "@/lib/users": { findUserById: async () => user },
+    "@/lib/utils/format": formatFunctions,
+    "@/lib/utils/group-gift-navigation": navigationFunctions,
+    "@/lib/wishlists": { isProductInWishlist: async () => true },
+  });
+  return { Page, calls };
+}
+
+test("공유 상품에서 공동선물을 만드는 동안 로그인과 생성 폼에 복귀 경로를 유지한다", async () => {
+  const { Page, calls } = loadNewGroupGiftPage();
+  const tree = await Page({
+    searchParams: Promise.resolve({
+      product: "product-id",
+      recipient: "recipient-id",
+      from: "/shared/shared-token/products/product-id",
+      returnTo: "/shared/shared-token",
+    }),
+  });
+  const form = findElements(tree, (node) => node.type === "CreateGroupGiftForm")[0];
+
+  assert.deepEqual(calls.callbacks, [
+    "/group-gifts/new?product=product-id&recipient=recipient-id&from=%2Fshared%2Fshared-token%2Fproducts%2Fproduct-id&returnTo=%2Fshared%2Fshared-token",
+  ]);
+  assert.equal(form.props.from, "/shared/shared-token/products/product-id");
+  assert.equal(form.props.returnTo, "/shared/shared-token");
+});
+
+test("생성 화면에서 기존 공동선물을 발견해도 공유 위시리스트 복귀 경로를 유지한다", async () => {
+  const { Page } = loadNewGroupGiftPage({ existingGroupGift: { id: "gift-id" } });
+  await assert.rejects(
+    Page({
+      searchParams: Promise.resolve({
+        product: "product-id",
+        recipient: "recipient-id",
+        returnTo: "/shared/shared-token",
+      }),
+    }),
+    /^Error: REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token$/,
+  );
 });
 
 test("공동선물이 없는 품절 상품의 구매 차단을 유지한다", async () => {

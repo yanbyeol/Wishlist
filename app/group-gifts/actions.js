@@ -18,6 +18,10 @@ import { getProductById } from "@/lib/products";
 import { getCurrentUser, requireUser } from "@/lib/session";
 import { findUserByEmail, findUserById } from "@/lib/users";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
+import {
+  getGroupGiftPath,
+  getSharedWishlistReturnPath,
+} from "@/lib/utils/group-gift-navigation";
 import { isValidEmail, parsePositiveInteger } from "@/lib/utils/validation";
 import { isProductInWishlist } from "@/lib/wishlists";
 
@@ -25,6 +29,7 @@ export async function createGroupGiftAction(previousState, formData) {
   const productId = String(formData.get("productId") ?? "");
   const recipientId = String(formData.get("recipientId") ?? "");
   const from = sanitizeCallbackPath(formData.get("from"), "/");
+  const returnTo = getSharedWishlistReturnPath(formData.get("returnTo"));
   const user = await requireUser(from);
   const title = String(formData.get("title") ?? "").trim();
 
@@ -53,7 +58,7 @@ export async function createGroupGiftAction(previousState, formData) {
   const existing = await findOpenGroupGiftForProduct(recipient.id, product.id);
 
   if (existing) {
-    redirect(`/group-gifts/${existing.id}`);
+    redirect(getGroupGiftPath(existing.id, returnTo));
   }
 
   let groupGift;
@@ -70,7 +75,7 @@ export async function createGroupGiftAction(previousState, formData) {
   }
 
   revalidatePath(from);
-  redirect(`/group-gifts/${groupGift.id}`);
+  redirect(getGroupGiftPath(groupGift.id, returnTo));
 }
 
 async function recipientMatchesEmail(groupGift, email) {
@@ -126,6 +131,7 @@ export async function requestGroupGiftOtpAction(groupGiftId, previousState, form
 export async function verifyGroupGiftOtpAction(groupGiftId, previousState, formData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const code = String(formData.get("code") ?? "").trim();
+  const returnTo = getSharedWishlistReturnPath(formData.get("returnTo"));
   const groupGift = await getGroupGiftById(groupGiftId);
 
   if (!groupGift || groupGift.status !== "funding") {
@@ -147,7 +153,7 @@ export async function verifyGroupGiftOtpAction(groupGiftId, previousState, formD
   }
 
   revalidatePath(`/group-gifts/${groupGiftId}`);
-  redirect(`/group-gifts/${groupGiftId}`);
+  redirect(getGroupGiftPath(groupGiftId, returnTo));
 }
 
 export async function contributeGroupGiftAction(groupGiftId, previousState, formData) {
@@ -156,6 +162,7 @@ export async function contributeGroupGiftAction(groupGiftId, previousState, form
   const nickname = String(formData.get("nickname") ?? "").trim();
   const message = String(formData.get("message") ?? "").trim();
   const amount = parsePositiveInteger(formData.get("amount"));
+  const returnTo = getSharedWishlistReturnPath(formData.get("returnTo"));
 
   if (!user && !guestSession) {
     return { message: "로그인하거나 이메일 인증을 완료해 주세요." };
@@ -214,15 +221,16 @@ export async function contributeGroupGiftAction(groupGiftId, previousState, form
       redirect(`/orders/${result.order.id}`);
     }
 
-    redirect(`/group-gifts/${groupGiftId}`);
+    redirect(getGroupGiftPath(groupGiftId, returnTo));
   }
 
   return { message: "", success: true };
 }
 
-export async function retryGroupGiftPaymentAction(groupGiftId, previousState) {
+export async function retryGroupGiftPaymentAction(groupGiftId, previousState, formData) {
   const user = await getCurrentUser();
   const guestSession = user ? null : await getGuestGroupGiftSession(groupGiftId);
+  const returnTo = getSharedWishlistReturnPath(formData?.get("returnTo"));
 
   if (!user && !guestSession) {
     return { message: "로그인하거나 이메일 인증을 완료해 주세요." };
@@ -251,5 +259,5 @@ export async function retryGroupGiftPaymentAction(groupGiftId, previousState) {
     redirect(`/orders/${order.id}`);
   }
 
-  redirect(`/group-gifts/${groupGiftId}`);
+  redirect(getGroupGiftPath(groupGiftId, returnTo));
 }

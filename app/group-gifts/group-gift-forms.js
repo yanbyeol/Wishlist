@@ -12,7 +12,7 @@ import { formatWon } from "@/lib/utils/format";
 
 const initialState = { message: "" };
 
-export function CreateGroupGiftForm({ product, recipient, from }) {
+export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" }) {
   const [state, formAction, pending] = useActionState(createGroupGiftAction, initialState);
 
   return (
@@ -20,6 +20,7 @@ export function CreateGroupGiftForm({ product, recipient, from }) {
       <input type="hidden" name="productId" value={product.id} />
       <input type="hidden" name="recipientId" value={recipient.id} />
       <input type="hidden" name="from" value={from} />
+      <input type="hidden" name="returnTo" value={returnTo} />
       <div className="recipient-summary">
         <span>선물을 받을 친구</span>
         <strong>{recipient.name}</strong>
@@ -48,7 +49,7 @@ export function CreateGroupGiftForm({ product, recipient, from }) {
   );
 }
 
-export function GuestOtpForm({ groupGiftId }) {
+export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
   const requestAction = requestGroupGiftOtpAction.bind(null, groupGiftId);
   const verifyAction = verifyGroupGiftOtpAction.bind(null, groupGiftId);
   const [requestState, requestFormAction, requestPending] = useActionState(
@@ -92,6 +93,7 @@ export function GuestOtpForm({ groupGiftId }) {
       {requestState?.requested && (
         <form action={verifyFormAction} className="stack-form otp-verification-form">
           <input type="hidden" name="email" value={requestState.email} />
+          <input type="hidden" name="returnTo" value={returnTo} />
           <label className="field">
             <span>6자리 인증번호</span>
             <input
@@ -134,7 +136,12 @@ function ContributionComplete({ onAdditionalContribution }) {
   );
 }
 
-function ContributionAttempt({ groupGift, defaultNickname, onAdditionalContribution }) {
+function ContributionAttempt({
+  groupGift,
+  defaultNickname,
+  onAdditionalContribution,
+  returnTo,
+}) {
   const action = contributeGroupGiftAction.bind(null, groupGift.id);
   const [state, formAction, pending] = useActionState(action, initialState);
   const remaining = groupGift.targetAmount - groupGift.currentAmount;
@@ -145,6 +152,7 @@ function ContributionAttempt({ groupGift, defaultNickname, onAdditionalContribut
 
   return (
     <form action={formAction} className="stack-form contribution-form">
+      <input type="hidden" name="returnTo" value={returnTo} />
       <label className="field">
         <span>참여 금액</span>
         <div className="input-with-suffix">
@@ -169,7 +177,12 @@ function ContributionAttempt({ groupGift, defaultNickname, onAdditionalContribut
   );
 }
 
-export function ContributionForm({ groupGift, defaultNickname, initialHasContribution }) {
+export function ContributionForm({
+  groupGift,
+  defaultNickname,
+  initialHasContribution,
+  returnTo = "",
+}) {
   const [attemptNumber, setAttemptNumber] = useState(initialHasContribution ? null : 0);
 
   if (attemptNumber === null) {
@@ -185,17 +198,19 @@ export function ContributionForm({ groupGift, defaultNickname, initialHasContrib
       key={attemptNumber}
       groupGift={groupGift}
       defaultNickname={defaultNickname}
+      returnTo={returnTo}
       onAdditionalContribution={() => setAttemptNumber((current) => current + 1)}
     />
   );
 }
 
-export function RetryGroupGiftForm({ groupGiftId }) {
+export function RetryGroupGiftForm({ groupGiftId, returnTo = "" }) {
   const action = retryGroupGiftPaymentAction.bind(null, groupGiftId);
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
     <form action={formAction} className="stack-form">
+      <input type="hidden" name="returnTo" value={returnTo} />
       <p className="form-message error-message" aria-live="polite">{state?.message}</p>
       <button className="button button-primary" type="submit" disabled={pending}>
         {pending ? "다시 처리하는 중..." : "데모 결제 다시 처리"}

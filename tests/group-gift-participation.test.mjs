@@ -35,6 +35,11 @@ function loadSource(path, dependencies, globals = {}) {
   return sourceModule.exports;
 }
 
+const formatFunctions = loadSource("lib/utils/format.js", {});
+const navigationFunctions = loadSource("lib/utils/group-gift-navigation.js", {
+  "@/lib/utils/format": formatFunctions,
+});
+
 function findElements(tree, predicate) {
   const found = [];
   function visit(node) {
@@ -172,6 +177,7 @@ function loadGroupGiftPage({ status = "funding", user = null, guestSession = nul
       },
     },
     "@/lib/session": { getCurrentUser: async () => user },
+    "@/lib/utils/group-gift-navigation": navigationFunctions,
     "@/lib/utils/format": {
       formatDate: (value) => value,
       formatWon: (value) => `${value}원`,
@@ -180,6 +186,81 @@ function loadGroupGiftPage({ status = "funding", user = null, guestSession = nul
   }).default;
   return { Page, contributionQueries, sessionQueries };
 }
+
+test("공유 위시리스트 복귀 경로는 허용된 단일 공유 경로만 사용한다", () => {
+  assert.equal(navigationFunctions.getSharedWishlistReturnPath("/shared/shared-token"), "/shared/shared-token");
+  assert.equal(navigationFunctions.getGroupGiftPath("gift/id", "/shared/shared-token"), "/group-gifts/gift%2Fid?returnTo=%2Fshared%2Fshared-token");
+
+  for (const path of [
+    undefined,
+    "",
+    "https://example.com/shared/token",
+    "//example.com/shared/token",
+    "/wishlist",
+    "/shared/token/products/product-id",
+    "/shared/token?next=/admin",
+    "/shared/..",
+    "/shared/%2Fadmin",
+    "/shared/token\\extra",
+  ]) {
+    assert.equal(navigationFunctions.getSharedWishlistReturnPath(path), "");
+    assert.equal(navigationFunctions.getGroupGiftPath("gift-id", path), "/group-gifts/gift-id");
+  }
+});
+
+test("공유 출처가 있을 때만 복귀 링크를 표시하고 참여 링크 복사는 기본 주소를 유지한다", async () => {
+  const direct = loadGroupGiftPage();
+  const directTree = await direct.Page({ params: Promise.resolve({ id: "gift-id" }) });
+  assert.equal(findElements(directTree, (node) => node.type === "Link" && node.props.className === "back-link").length, 0);
+
+  const shared = loadGroupGiftPage();
+  const sharedTree = await shared.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+    searchParams: Promise.resolve({ returnTo: "/shared/shared-token" }),
+  });
+  const backLink = findElements(sharedTree, (node) => node.type === "Link" && node.props.className === "back-link")[0];
+  const shareButton = findElements(sharedTree, (node) => node.type === "ShareButton")[0];
+  const guestForm = findElements(sharedTree, (node) => node.type === "GuestOtpForm")[0];
+
+  assert.equal(backLink.props.href, "/shared/shared-token");
+  assert.equal(backLink.props.children, "← 위시리스트로 돌아가기");
+  assert.equal(shareButton.props.path, "/group-gifts/gift-id");
+  assert.equal(guestForm.props.returnTo, "/shared/shared-token");
+
+  const invalid = loadGroupGiftPage();
+  const invalidTree = await invalid.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+    searchParams: Promise.resolve({ returnTo: "https://example.com" }),
+  });
+  assert.equal(findElements(invalidTree, (node) => node.type === "Link" && node.props.className === "back-link").length, 0);
+  assert.equal(findElements(invalidTree, (node) => node.type === "GuestOtpForm")[0].props.returnTo, "");
+});
+
+test("공유 출처를 참여 및 결제 재처리 폼에 유지한다", async () => {
+  const member = loadGroupGiftPage({ user: { id: "member-id", name: "회원" } });
+  const memberTree = await member.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+    searchParams: Promise.resolve({ returnTo: "/shared/shared-token" }),
+  });
+  assert.equal(
+    findElements(memberTree, (node) => node.type === "ContributionForm")[0].props.returnTo,
+    "/shared/shared-token",
+  );
+
+  const retry = loadGroupGiftPage({
+    status: "payment_failed",
+    user: { id: "member-id", name: "회원" },
+    hasContribution: true,
+  });
+  const retryTree = await retry.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+    searchParams: Promise.resolve({ returnTo: "/shared/shared-token" }),
+  });
+  assert.equal(
+    findElements(retryTree, (node) => node.type === "RetryGroupGiftForm")[0].props.returnTo,
+    "/shared/shared-token",
+  );
+});
 
 test("로그인 회원의 참여 완료 화면은 회원 ID의 DB 조회 결과를 사용한다", async () => {
   const { Page, contributionQueries, sessionQueries } = loadGroupGiftPage({
@@ -360,7 +441,12 @@ test("paid 참여 내역이 있으면 안내부터 표시하고 추가 참여 �
   assert.equal(findElements(form.tree(), (node) => node.type === "form").length, 1);
 });
 
-function loadContributionAction({ participant = { id: "member-id" }, result, failure } = {}) {
+function loadContributionAction({
+  participant = { id: "member-id" },
+  result,
+  failure,
+  retryResult = null,
+} = {}) {
   const revalidated = [];
   const redirects = [];
   const actions = loadSource("app/group-gifts/actions.js", {
@@ -379,7 +465,7 @@ function loadContributionAction({ participant = { id: "member-id" }, result, fai
       createGroupGift: async () => null,
       findOpenGroupGiftForProduct: async () => null,
       getGroupGiftById: async () => ({ recipientId: "recipient-id", status: "funding" }),
-      retryGroupGiftPayment: async () => null,
+      retryGroupGiftPayment: async () => retryResult,
     },
     "@/lib/group-gift-otp": {
       getGuestGroupGiftSession: async () => participant?.email ? participant : null,
@@ -396,6 +482,7 @@ function loadContributionAction({ participant = { id: "member-id" }, result, fai
       findUserById: async () => null,
     },
     "@/lib/utils/format": { sanitizeCallbackPath: () => "/" },
+    "@/lib/utils/group-gift-navigation": navigationFunctions,
     "@/lib/utils/validation": {
       isValidEmail: () => true,
       parsePositiveInteger: (value) => Number(value) || null,
@@ -405,13 +492,112 @@ function loadContributionAction({ participant = { id: "member-id" }, result, fai
   return { actions, revalidated, redirects };
 }
 
-function validContributionFormData() {
+function validContributionFormData(returnTo = "") {
   const formData = new FormData();
   formData.set("nickname", "참여자");
   formData.set("amount", "1000");
   formData.set("message", "축하해요");
+  if (returnTo) formData.set("returnTo", returnTo);
   return formData;
 }
+
+function loadCreateGroupGiftAction({ existingGroupGift = null } = {}) {
+  const calls = {
+    callbacks: [],
+    created: [],
+    redirects: [],
+    revalidated: [],
+  };
+  const actions = loadSource("app/group-gifts/actions.js", {
+    "next/cache": { revalidatePath: (path) => calls.revalidated.push(path) },
+    "next/navigation": {
+      redirect(path) {
+        calls.redirects.push(path);
+        throw new Error(`REDIRECT:${path}`);
+      },
+    },
+    "@/lib/group-gifts": {
+      contributeToGroupGift: async () => null,
+      async createGroupGift(input) {
+        calls.created.push({ ...input });
+        return { id: "new-gift-id" };
+      },
+      findOpenGroupGiftForProduct: async () => existingGroupGift,
+      getGroupGiftById: async () => null,
+      retryGroupGiftPayment: async () => null,
+    },
+    "@/lib/group-gift-otp": {
+      getGuestGroupGiftSession: async () => null,
+      requestGuestGroupGiftOtp: async () => null,
+      verifyGuestGroupGiftOtp: async () => null,
+    },
+    "@/lib/products": {
+      getProductById: async () => ({
+        id: "product-id",
+        name: "테스트 상품",
+        price: 50000,
+        quantity: 1,
+        status: "active",
+      }),
+    },
+    "@/lib/session": {
+      getCurrentUser: async () => null,
+      async requireUser(callback) {
+        calls.callbacks.push(callback);
+        return { id: "organizer-id" };
+      },
+    },
+    "@/lib/users": {
+      findUserByEmail: async () => null,
+      findUserById: async () => ({ id: "recipient-id", name: "받는 사람" }),
+    },
+    "@/lib/utils/format": formatFunctions,
+    "@/lib/utils/group-gift-navigation": navigationFunctions,
+    "@/lib/utils/validation": {
+      isValidEmail: () => true,
+      parsePositiveInteger: (value) => Number(value) || null,
+    },
+    "@/lib/wishlists": { isProductInWishlist: async () => true },
+  });
+  return { actions, calls };
+}
+
+function groupGiftCreationForm() {
+  const formData = new FormData();
+  formData.set("productId", "product-id");
+  formData.set("recipientId", "recipient-id");
+  formData.set("title", "테스트 공동선물");
+  formData.set("from", "/shared/shared-token/products/product-id");
+  formData.set("returnTo", "/shared/shared-token");
+  return formData;
+}
+
+test("공동선물 생성 결과에는 출처를 저장하지 않고 공유 위시리스트 경로로만 되돌릴 수 있게 한다", async () => {
+  const created = loadCreateGroupGiftAction();
+  await assert.rejects(
+    created.actions.createGroupGiftAction({}, groupGiftCreationForm()),
+    /REDIRECT:\/group-gifts\/new-gift-id\?returnTo=%2Fshared%2Fshared-token/,
+  );
+  assert.deepEqual(created.calls.redirects, [
+    "/group-gifts/new-gift-id?returnTo=%2Fshared%2Fshared-token",
+  ]);
+  assert.deepEqual(created.calls.callbacks, ["/shared/shared-token/products/product-id"]);
+  assert.equal(created.calls.revalidated.includes("/shared/shared-token/products/product-id"), true);
+  assert.equal(created.calls.created.length, 1);
+  assert.deepEqual(Object.keys(created.calls.created[0]).sort(), [
+    "organizerId",
+    "product",
+    "recipientId",
+    "title",
+  ]);
+
+  const existing = loadCreateGroupGiftAction({ existingGroupGift: { id: "existing-gift-id" } });
+  await assert.rejects(
+    existing.actions.createGroupGiftAction({}, groupGiftCreationForm()),
+    /REDIRECT:\/group-gifts\/existing-gift-id\?returnTo=%2Fshared%2Fshared-token/,
+  );
+  assert.equal(existing.calls.created.length, 0);
+});
 
 test("목표가 남은 참여 성공은 현재 화면에 성공 상태를 반환하고 저장 실패는 오류를 반환한다", async () => {
   const success = loadContributionAction();
@@ -456,4 +642,49 @@ test("목표 달성 후 회원과 이메일 인증 방문자의 기존 이동을
     /REDIRECT:\/group-gifts\/gift-id/,
   );
   assert.deepEqual(guest.redirects, ["/group-gifts/gift-id"]);
+});
+
+test("이메일 인증·목표 달성·결제 재처리 뒤에도 공유 위시리스트 출처를 유지한다", async () => {
+  const verification = loadContributionAction({ participant: { email: "friend@example.com" } });
+  const verificationForm = new FormData();
+  verificationForm.set("email", "friend@example.com");
+  verificationForm.set("code", "123456");
+  verificationForm.set("returnTo", "/shared/shared-token");
+  await assert.rejects(
+    verification.actions.verifyGroupGiftOtpAction("gift-id", {}, verificationForm),
+    /REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token/,
+  );
+  assert.deepEqual(verification.redirects, [
+    "/group-gifts/gift-id?returnTo=%2Fshared%2Fshared-token",
+  ]);
+
+  const contribution = loadContributionAction({
+    participant: { email: "friend@example.com" },
+    result: { contributionId: "contribution-id", order: { id: "order-id" } },
+  });
+  await assert.rejects(
+    contribution.actions.contributeGroupGiftAction(
+      "gift-id",
+      {},
+      validContributionFormData("/shared/shared-token"),
+    ),
+    /REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token/,
+  );
+  assert.deepEqual(contribution.redirects, [
+    "/group-gifts/gift-id?returnTo=%2Fshared%2Fshared-token",
+  ]);
+
+  const retry = loadContributionAction({
+    participant: { email: "friend@example.com" },
+    retryResult: { id: "order-id" },
+  });
+  const retryForm = new FormData();
+  retryForm.set("returnTo", "/shared/shared-token");
+  await assert.rejects(
+    retry.actions.retryGroupGiftPaymentAction("gift-id", {}, retryForm),
+    /REDIRECT:\/group-gifts\/gift-id\?returnTo=%2Fshared%2Fshared-token/,
+  );
+  assert.deepEqual(retry.redirects, [
+    "/group-gifts/gift-id?returnTo=%2Fshared%2Fshared-token",
+  ]);
 });
