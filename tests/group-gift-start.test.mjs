@@ -38,9 +38,22 @@ function loadSource(path, dependencies, globals = {}) {
 
 const groupGiftUtils = loadSource("lib/utils/group-gift.js", {});
 
+let generatedObjectId = 0;
+
+class FakeObjectId {
+  constructor() {
+    generatedObjectId += 1;
+    this.value = `generated-object-id-${generatedObjectId}`;
+  }
+
+  toString() {
+    return this.value;
+  }
+}
+
 function groupGiftDependencies(db) {
   return {
-    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
+    mongodb: { ObjectId: FakeObjectId },
     "@/lib/mongodb": { getDatabase: async () => db },
     "@/lib/notifications": {
       createNotificationSafely: async () => null,
@@ -60,6 +73,128 @@ function groupGiftDependencies(db) {
     },
   };
 }
+
+test("첫 참여 결제를 완료한 뒤에만 공동선물 기록을 생성한다", async () => {
+  const events = [];
+  let contributionDocument = null;
+  let groupGiftDocument = null;
+  const db = {
+    collection(name) {
+      if (name === "contributions") {
+        return {
+          async insertOne(document) {
+            contributionDocument = { ...document };
+            events.push(`contribution:${document.paymentStatus}`);
+            return { insertedId: document._id };
+          },
+          async updateOne(filter, update) {
+            assert.equal(filter.paymentStatus, "pending");
+            contributionDocument = { ...contributionDocument, ...update.$set };
+            events.push(`payment:${update.$set.paymentStatus}`);
+            return { matchedCount: 1 };
+          },
+          async deleteOne() {
+            contributionDocument = null;
+            events.push("contribution:deleted");
+          },
+        };
+      }
+
+      if (name === "groupGifts") {
+        return {
+          async insertOne(document) {
+            groupGiftDocument = { ...document };
+            events.push("group-gift:created");
+            return { insertedId: document._id };
+          },
+          async deleteOne() {
+            groupGiftDocument = null;
+            events.push("group-gift:deleted");
+          },
+        };
+      }
+
+      throw new Error(`예상하지 못한 컬렉션: ${name}`);
+    },
+  };
+  const { createGroupGift } = loadSource("lib/group-gifts.js", groupGiftDependencies(db));
+  const result = await createGroupGift({
+    organizerId: "organizer-id",
+    recipientId: "recipient-id",
+    product: { id: "product-id", price: 50000 },
+    title: "테스트 공동선물",
+    expiresAt: new Date(Date.now() + 7 * 86400000),
+    initialContribution: {
+      nickname: "개설자",
+      amount: 10000,
+      message: "축하해요",
+    },
+  });
+
+  assert.deepEqual(events, [
+    "contribution:pending",
+    "payment:paid",
+    "group-gift:created",
+  ]);
+  assert.equal(contributionDocument.groupGiftId, result.groupGift.id);
+  assert.equal(contributionDocument.paymentStatus, "paid");
+  assert.equal(groupGiftDocument.currentAmount, 10000);
+  assert.equal(result.groupGift.status, "funding");
+});
+
+test("첫 참여 결제가 실패하면 공동선물 기록을 생성하지 않는다", async () => {
+  const events = [];
+  const db = {
+    collection(name) {
+      if (name === "contributions") {
+        return {
+          async insertOne(document) {
+            events.push(`contribution:${document.paymentStatus}`);
+          },
+          async updateOne() {
+            events.push("payment:failed");
+            return { matchedCount: 0 };
+          },
+          async deleteOne() {
+            events.push("contribution:deleted");
+          },
+        };
+      }
+
+      if (name === "groupGifts") {
+        return {
+          async insertOne() {
+            events.push("group-gift:created");
+          },
+          async deleteOne() {
+            events.push("group-gift:cleanup");
+          },
+        };
+      }
+
+      throw new Error(`예상하지 못한 컬렉션: ${name}`);
+    },
+  };
+  const { createGroupGift } = loadSource("lib/group-gifts.js", groupGiftDependencies(db));
+
+  await assert.rejects(
+    createGroupGift({
+      organizerId: "organizer-id",
+      recipientId: "recipient-id",
+      product: { id: "product-id", price: 50000 },
+      title: "테스트 공동선물",
+      expiresAt: new Date(Date.now() + 7 * 86400000),
+      initialContribution: {
+        nickname: "개설자",
+        amount: 10000,
+        message: "",
+      },
+    }),
+    /첫 참여 결제를 완료하지 못했습니다/,
+  );
+  assert.equal(events.includes("group-gift:created"), false);
+  assert.equal(events.includes("contribution:deleted"), true);
+});
 
 test("진행 중 공동선물 조회는 funding 상태에서 누적 금액이 0원보다 커야 한다", async () => {
   const queries = { single: null, multiple: null };

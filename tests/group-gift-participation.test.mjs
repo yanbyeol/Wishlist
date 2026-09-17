@@ -89,7 +89,7 @@ test("기존 참여 여부는 회원 ID 또는 인증 이메일과 paid 상태�
     },
   };
   const { hasGroupGiftContribution } = loadSource("lib/group-gifts.js", {
-    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
+    mongodb: { ObjectId: class ObjectId {} },
     "@/lib/mongodb": { getDatabase: async () => db },
     "@/lib/notifications": {
       createNotificationSafely: async () => null,
@@ -206,6 +206,7 @@ test("참여 합계가 0원인 공동선물 상세는 별도 상태 없이 참�
   const tree = await Page({ params: Promise.resolve({ id: "gift-id" }) });
 
   assert.equal(findElements(tree, (node) => node.type === "StatusBadge").length, 0);
+  assert.equal(findElements(tree, (node) => node.type === "GroupGiftManagement").length, 0);
   assert.equal(findText(tree, "금액 참여를 완료하면 공동선물이 시작돼요."), true);
   assert.equal(findText(tree, "개설자님이 함께 선물할 친구를 초대했어요."), true);
 });
@@ -596,7 +597,7 @@ function validContributionFormData(returnTo = "") {
   return formData;
 }
 
-function loadCreateGroupGiftAction({ existingGroupGift = null } = {}) {
+function loadCreateGroupGiftAction({ existingGroupGift = null, order = null } = {}) {
   const calls = {
     callbacks: [],
     created: [],
@@ -615,7 +616,7 @@ function loadCreateGroupGiftAction({ existingGroupGift = null } = {}) {
       contributeToGroupGift: async () => null,
       async createGroupGift(input) {
         calls.created.push({ ...input });
-        return { id: "new-gift-id" };
+        return { groupGift: { id: "new-gift-id" }, order };
       },
       findOpenGroupGiftForProduct: async () => existingGroupGift,
       getGroupGiftById: async () => null,
@@ -662,6 +663,10 @@ function groupGiftCreationForm() {
   formData.set("productId", "product-id");
   formData.set("recipientId", "recipient-id");
   formData.set("title", "테스트 공동선물");
+  formData.set("endDate", "2099-12-31");
+  formData.set("amount", "10000");
+  formData.set("nickname", "개설자");
+  formData.set("message", "함께 축하해요");
   formData.set("from", "/shared/shared-token/products/product-id");
   formData.set("returnTo", "/shared/shared-token");
   return formData;
@@ -682,11 +687,17 @@ test("공동선물 생성 결과에는 출처를 저장하지 않고 공유 위�
   assert.equal(created.calls.revalidated.includes("/shared/shared-token/products/product-id"), true);
   assert.equal(created.calls.created.length, 1);
   assert.deepEqual(Object.keys(created.calls.created[0]).sort(), [
+    "expiresAt",
+    "initialContribution",
     "organizerId",
     "product",
     "recipientId",
     "title",
   ]);
+  assert.equal(created.calls.created[0].expiresAt.toISOString(), "2099-12-31T14:59:59.999Z");
+  assert.equal(created.calls.created[0].initialContribution.nickname, "개설자");
+  assert.equal(created.calls.created[0].initialContribution.amount, 10000);
+  assert.equal(created.calls.created[0].initialContribution.message, "함께 축하해요");
 
   const existing = loadCreateGroupGiftAction({ existingGroupGift: { id: "existing-gift-id" } });
   await assert.rejects(
@@ -694,6 +705,58 @@ test("공동선물 생성 결과에는 출처를 저장하지 않고 공유 위�
     /REDIRECT:\/group-gifts\/existing-gift-id\?returnTo=%2Fshared%2Fshared-token/,
   );
   assert.equal(existing.calls.created.length, 0);
+});
+
+test("첫 참여로 목표 금액을 채우면 공동선물 상세 대신 주문 결과로 이동한다", async () => {
+  const completed = loadCreateGroupGiftAction({ order: { id: "order-id" } });
+
+  await assert.rejects(
+    completed.actions.createGroupGiftAction({}, groupGiftCreationForm()),
+    /REDIRECT:\/orders\/order-id/,
+  );
+  assert.deepEqual(completed.calls.redirects, ["/orders/order-id"]);
+  assert.equal(completed.calls.revalidated.includes("/mypage/gifts"), true);
+  assert.equal(completed.calls.revalidated.includes("/seller/orders"), true);
+});
+
+test("공동선물 시작 폼은 종료일 다음에 첫 참여 금액을 받고 연장 UI를 표시하지 않는다", () => {
+  const forms = loadSource("app/group-gifts/group-gift-forms.js", {
+    react: {
+      useActionState: (action, state) => [state, action, false],
+      useState: (value) => [value, () => {}],
+    },
+    "@/app/group-gifts/actions": {
+      cancelGroupGiftAction: async () => ({}),
+      contributeGroupGiftAction: async () => ({}),
+      createGroupGiftAction: async () => ({}),
+      extendGroupGiftAction: async () => ({}),
+      requestGroupGiftOtpAction: async () => ({}),
+      retryGroupGiftPaymentAction: async () => ({}),
+      verifyGroupGiftOtpAction: async () => ({}),
+    },
+    "@/lib/utils/format": { formatWon: (value) => `${value}원` },
+  });
+  const tree = forms.CreateGroupGiftForm({
+    product: { id: "product-id", name: "상품", price: 50000 },
+    recipient: { id: "recipient-id", name: "받는 사람" },
+    from: "/shared/token/products/product-id",
+    defaultNickname: "개설자",
+    minimumEndDate: "2026-09-18",
+    defaultEndDate: "2026-10-01",
+  });
+  const fields = findElements(
+    tree,
+    (node) => ["input", "textarea"].includes(node.type) && node.props.name,
+  );
+  const fieldNames = fields.map((field) => field.props.name);
+  const endDate = fields.find((field) => field.props.name === "endDate");
+
+  assert.ok(fieldNames.indexOf("endDate") < fieldNames.indexOf("amount"));
+  assert.equal(endDate.props.required, true);
+  assert.equal(endDate.props.defaultValue, "2026-10-01");
+  assert.equal(findText(tree, "공동선물 시작하기"), true);
+  assert.equal(findText(tree, "새 종료일"), false);
+  assert.equal(findText(tree, "모집 기간 연장"), false);
 });
 
 test("목표가 남은 참여 성공은 현재 화면에 성공 상태를 반환하고 저장 실패는 오류를 반환한다", async () => {

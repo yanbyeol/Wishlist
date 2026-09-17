@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { CreateGroupGiftForm } from "@/app/group-gifts/group-gift-forms";
 import GiftEmailAuthForm from "@/components/gift-email-auth-form";
 import ProductImage from "@/components/product-image";
+import { GROUP_GIFT_DURATION_DAYS } from "@/lib/constants";
 import { findOpenGroupGiftForProduct } from "@/lib/group-gifts";
 import { getProductById } from "@/lib/products";
 import { getCurrentUser } from "@/lib/session";
@@ -16,6 +17,12 @@ import {
 import { isProductInWishlist } from "@/lib/wishlists";
 
 export const metadata = { title: "함께 선물하기" };
+
+function getKoreaDateValue(daysToAdd) {
+  const koreaDate = new Date(Date.now() + (9 * 60 * 60 * 1000));
+  koreaDate.setUTCDate(koreaDate.getUTCDate() + daysToAdd);
+  return koreaDate.toISOString().slice(0, 10);
+}
 
 export default async function NewGroupGiftPage({ searchParams }) {
   await connection();
@@ -84,6 +91,9 @@ export default async function NewGroupGiftPage({ searchParams }) {
           recipient={recipient}
           from={from}
           returnTo={returnTo}
+          defaultNickname={user.name}
+          minimumEndDate={getKoreaDateValue(1)}
+          defaultEndDate={getKoreaDateValue(GROUP_GIFT_DURATION_DAYS)}
         />
       </div>
       <aside className="order-summary-card">

@@ -125,7 +125,7 @@ export default async function GroupGiftPage({ params, searchParams }) {
         </div>
 
         <aside className="participation-panel">
-          {["funding", "goal_not_met"].includes(groupGift.status) && isOrganizer && (
+          {["funding", "goal_not_met"].includes(groupGift.status) && isOrganizer && groupGiftStarted && (
             <GroupGiftManagement
               groupGiftId={groupGift.id}
               status={groupGift.status}

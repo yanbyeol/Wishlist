@@ -38,9 +38,38 @@ export async function createGroupGiftAction(previousState, formData) {
 
   const user = await requireGiftUser(`/group-gifts/new?${callbackParams}`);
   const title = String(formData.get("title") ?? "").trim();
+  const endDate = String(formData.get("endDate") ?? "").trim();
+  const amount = parsePositiveInteger(formData.get("amount"));
+  const nickname = String(formData.get("nickname") ?? "").trim();
+  const message = String(formData.get("message") ?? "").trim();
 
   if (title.length < 2 || title.length > 60) {
     return { message: "함께 선물하기 제목은 2자 이상 60자 이하로 입력해 주세요." };
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    return { message: "모집 종료일을 선택해 주세요." };
+  }
+
+  const expiresAt = new Date(`${endDate}T23:59:59.999+09:00`);
+  const normalizedEndDate = Number.isNaN(expiresAt.getTime())
+    ? ""
+    : new Date(expiresAt.getTime() + (9 * 60 * 60 * 1000)).toISOString().slice(0, 10);
+
+  if (normalizedEndDate !== endDate || expiresAt <= new Date()) {
+    return { message: "모집 종료일은 오늘 이후 날짜로 선택해 주세요." };
+  }
+
+  if (!amount) {
+    return { message: "참여 금액은 1원 이상의 정수로 입력해 주세요." };
+  }
+
+  if (nickname.length < 2 || nickname.length > 20) {
+    return { message: "닉네임은 2자 이상 20자 이하로 입력해 주세요." };
+  }
+
+  if (message.length > 300) {
+    return { message: "축하 메시지는 300자 이하로 입력해 주세요." };
   }
 
   const [product, recipient, isWishlisted] = await Promise.all([
@@ -57,6 +86,10 @@ export async function createGroupGiftAction(previousState, formData) {
     return { message: "공유 위시리스트에서 상품을 다시 확인해 주세요." };
   }
 
+  if (amount > product.price) {
+    return { message: "참여 금액은 목표 금액보다 클 수 없습니다." };
+  }
+
   if (recipient.id === user.id) {
     return { message: "내 위시리스트 상품은 나에게 선물하기를 이용해 주세요." };
   }
@@ -67,21 +100,36 @@ export async function createGroupGiftAction(previousState, formData) {
     redirect(getGroupGiftPath(existing.id, returnTo));
   }
 
-  let groupGift;
+  let result;
 
   try {
-    groupGift = await createGroupGift({
+    result = await createGroupGift({
       organizerId: user.id,
       recipientId: recipient.id,
       product,
       title,
+      expiresAt,
+      initialContribution: {
+        nickname,
+        amount,
+        message,
+      },
     });
   } catch {
-    return { message: "함께 선물하기를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요." };
+    return { message: "첫 참여 결제를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   revalidatePath(from);
-  redirect(getGroupGiftPath(groupGift.id, returnTo));
+  revalidatePath("/");
+  revalidatePath("/wishlist");
+
+  if (result.order) {
+    revalidatePath("/mypage/gifts");
+    revalidatePath("/seller/orders");
+    redirect(`/orders/${result.order.id}`);
+  }
+
+  redirect(getGroupGiftPath(result.groupGift.id, returnTo));
 }
 
 async function recipientMatchesEmail(groupGift, email) {

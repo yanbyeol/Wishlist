@@ -338,7 +338,10 @@ test("공동선물이 없는 공유 상품은 로그인 여부와 수령인에 �
   }
 });
 
-function loadNewGroupGiftPage({ existingGroupGift = null, currentUser = { id: "organizer-id" } } = {}) {
+function loadNewGroupGiftPage({
+  existingGroupGift = null,
+  currentUser = { id: "organizer-id", name: "개설자" },
+} = {}) {
   const calls = { userQueries: 0 };
   const Page = loadSource("app/group-gifts/new/page.js", {
     "next/link": "Link",
@@ -350,6 +353,7 @@ function loadNewGroupGiftPage({ existingGroupGift = null, currentUser = { id: "o
     "@/app/group-gifts/group-gift-forms": { CreateGroupGiftForm: "CreateGroupGiftForm" },
     "@/components/gift-email-auth-form": "GiftEmailAuthForm",
     "@/components/product-image": "ProductImage",
+    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
     "@/lib/group-gifts": {
       findOpenGroupGiftForProduct: async () => existingGroupGift,
     },
@@ -383,6 +387,9 @@ test("공유 상품에서 공동선물을 만드는 동안 생성 폼의 복귀 
   assert.equal(calls.userQueries, 1);
   assert.equal(form.props.from, "/shared/shared-token/products/product-id");
   assert.equal(form.props.returnTo, "/shared/shared-token");
+  assert.equal(form.props.defaultNickname, "개설자");
+  assert.match(form.props.minimumEndDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(form.props.defaultEndDate, /^\d{4}-\d{2}-\d{2}$/);
 });
 
 test("비로그인 공동선물 개설자는 생성 화면 안에서만 이메일 인증한다", async () => {

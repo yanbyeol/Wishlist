@@ -459,7 +459,7 @@ test("다른 참여자의 공동선물 참여는 DB의 개설자에게 닉네임
     },
   };
   const groupGifts = loadSource("lib/group-gifts.js", {
-    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
+    mongodb: { ObjectId: class ObjectId {} },
     "@/lib/mongodb": { getDatabase: async () => database },
     "@/lib/notifications": {
       async createNotificationSafely(notification) {
@@ -534,7 +534,7 @@ test("공동선물 목표 달성 알림은 완료 처리에 성공한 한 번만
     },
   };
   const groupGifts = loadSource("lib/group-gifts.js", {
-    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
+    mongodb: { ObjectId: class ObjectId {} },
     "@/lib/mongodb": { getDatabase: async () => database },
     "@/lib/notifications": {
       async createNotificationSafely(notification) {

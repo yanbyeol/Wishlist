@@ -85,7 +85,7 @@ function createGroupGiftDatabase(groupGift) {
 
 function loadGroupGiftFunctions(database) {
   return loadSource("lib/group-gifts.js", {
-    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
+    mongodb: { ObjectId: class ObjectId {} },
     "@/lib/mongodb": { getDatabase: async () => database },
     "@/lib/notifications": {
       createNotificationSafely: async () => null,

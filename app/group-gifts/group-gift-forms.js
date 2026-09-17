@@ -14,7 +14,15 @@ import { formatWon } from "@/lib/utils/format";
 
 const initialState = { message: "" };
 
-export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" }) {
+export function CreateGroupGiftForm({
+  product,
+  recipient,
+  from,
+  returnTo = "",
+  defaultNickname,
+  minimumEndDate,
+  defaultEndDate,
+}) {
   const [state, formAction, pending] = useActionState(createGroupGiftAction, initialState);
 
   return (
@@ -26,7 +34,7 @@ export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" })
       <div className="recipient-summary">
         <span>선물을 받을 친구</span>
         <strong>{recipient.name}</strong>
-        <small>목표 금액 {formatWon(product.price)} · 모집 기간 14일</small>
+        <small>목표 금액 {formatWon(product.price)}</small>
       </div>
       <label className="field">
         <span>함께 선물하기 제목</span>
@@ -39,13 +47,59 @@ export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" })
           required
         />
       </label>
+      <label className="field">
+        <span>모집 종료일</span>
+        <input
+          name="endDate"
+          type="date"
+          min={minimumEndDate}
+          defaultValue={defaultEndDate}
+          required
+        />
+      </label>
+      <label className="field">
+        <span>참여 금액</span>
+        <div className="input-with-suffix">
+          <input
+            name="amount"
+            type="number"
+            min="1"
+            max={product.price}
+            step="1"
+            placeholder="10000"
+            required
+          />
+          <span>원</span>
+        </div>
+        <small>첫 참여가 완료되면 공동선물이 시작됩니다.</small>
+      </label>
+      <label className="field">
+        <span>공개 닉네임</span>
+        <input
+          name="nickname"
+          type="text"
+          minLength="2"
+          maxLength="20"
+          defaultValue={defaultNickname}
+          required
+        />
+      </label>
+      <label className="field">
+        <span>축하 메시지 (선택)</span>
+        <textarea
+          name="message"
+          rows="4"
+          maxLength="300"
+          placeholder="함께 전할 마음을 남겨 주세요."
+        />
+      </label>
       <div className="demo-notice">
         <strong>목업 결제 안내</strong>
-        <span>참여 금액은 실제로 결제되지 않으며 목표 달성 시 선물 준비 완료로 처리됩니다.</span>
+        <span>첫 참여 금액은 실제로 결제되지 않으며 결제가 완료된 뒤 공동선물이 생성됩니다.</span>
       </div>
       <p className="form-message error-message" aria-live="polite">{state?.message}</p>
       <button className="button button-primary button-full" type="submit" disabled={pending}>
-        {pending ? "함께 선물하기를 만드는 중..." : "함께 선물하기 시작"}
+        {pending ? "목업 결제 중..." : "공동선물 시작하기"}
       </button>
     </form>
   );
