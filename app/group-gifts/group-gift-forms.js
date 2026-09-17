@@ -182,7 +182,12 @@ export function GuestOtpForm({
   );
 }
 
-export function GroupGiftManagement({ groupGiftId, status, minimumEndDate }) {
+export function GroupGiftManagement({
+  groupGiftId,
+  status,
+  minimumEndDate,
+  hasOtherParticipants = false,
+}) {
   const extendAction = extendGroupGiftAction.bind(null, groupGiftId);
   const cancelAction = cancelGroupGiftAction.bind(null, groupGiftId);
   const [extendState, extendFormAction, extendPending] = useActionState(
@@ -217,13 +222,22 @@ export function GroupGiftManagement({ groupGiftId, status, minimumEndDate }) {
       </form>
       {status === "funding" && (
         <form action={cancelFormAction} className="group-gift-cancel-form">
+          {hasOtherParticipants && (
+            <p className="form-message error-message">
+              다른 참여자가 있어 모집을 종료할 수 없습니다.
+            </p>
+          )}
           <p
             className={`form-message ${cancelState?.error ? "error-message" : ""}`}
             aria-live="polite"
           >
             {cancelState?.message}
           </p>
-          <button className="text-button danger-text" type="submit" disabled={cancelPending}>
+          <button
+            className="text-button danger-text"
+            type="submit"
+            disabled={cancelPending || hasOtherParticipants}
+          >
             {cancelPending ? "종료하는 중..." : "함께 선물 모집 종료"}
           </button>
         </form>

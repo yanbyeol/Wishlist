@@ -30,12 +30,13 @@ function loadSource(path, dependencies) {
   return sourceModule.exports;
 }
 
-function createGroupGiftDatabase(groupGift) {
+function createGroupGiftDatabase(groupGift, { otherPaidContribution = null } = {}) {
   let document = { ...groupGift };
   const calls = {
     updates: [],
     findOneAndUpdates: [],
     contributionFinds: 0,
+    contributionFindOnes: [],
   };
 
   return {
@@ -65,6 +66,10 @@ function createGroupGiftDatabase(groupGift) {
 
         if (name === "contributions") {
           return {
+            async findOne(query) {
+              calls.contributionFindOnes.push(query);
+              return otherPaidContribution;
+            },
             find() {
               calls.contributionFinds += 1;
               return {
@@ -240,10 +245,34 @@ test("개설자는 진행 중인 공동선물을 종료할 수 있다", async ()
   const result = await cancelGroupGift("group-gift-id", "organizer-id");
 
   assert.equal(result.status, "cancelled");
+  assert.equal(database.calls.contributionFindOnes.length, 1);
+  assert.equal(database.calls.contributionFindOnes[0].paymentStatus.$in.length, 2);
+  assert.equal(database.calls.contributionFindOnes[0].paymentStatus.$in[0], "pending");
+  assert.equal(database.calls.contributionFindOnes[0].paymentStatus.$in[1], "paid");
+  assert.equal(database.calls.contributionFindOnes[0].userId.$nin.length, 1);
+  assert.equal(database.calls.contributionFindOnes[0].userId.$nin[0], "organizer-id");
+  assert.equal(
+    database.calls.findOneAndUpdates[0].filter.currentAmount,
+    20000,
+  );
   assert.deepEqual(
     Object.keys(database.calls.findOneAndUpdates[0].update.$set).sort(),
     ["status", "updatedAt"],
   );
+});
+
+test("다른 사용자의 결제 완료 참여가 있으면 개설자도 모집을 종료할 수 없다", async () => {
+  const database = createGroupGiftDatabase(groupGift(), {
+    otherPaidContribution: { _id: "other-contribution-id" },
+  });
+  const { cancelGroupGift } = loadGroupGiftFunctions(database.db);
+
+  await assert.rejects(
+    cancelGroupGift("group-gift-id", "organizer-id"),
+    /다른 참여자가 있어 모집을 종료할 수 없습니다/,
+  );
+  assert.equal(database.calls.findOneAndUpdates.length, 0);
+  assert.equal(database.document.status, "funding");
 });
 
 test("관리 Server Action은 폼의 사용자 값이 아니라 현재 세션 사용자 ID만 사용한다", async () => {

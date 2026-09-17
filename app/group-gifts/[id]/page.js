@@ -61,6 +61,10 @@ export default async function GroupGiftPage({ params, searchParams }) {
       userId: user.id,
     })
     : false;
+  const hasOtherParticipants = groupGift.contributions.some((contribution) => (
+    contribution.paymentStatus === "paid"
+    && contribution.userId !== groupGift.organizerId
+  ));
 
   return (
     <section className="container page-section">
@@ -130,6 +134,7 @@ export default async function GroupGiftPage({ params, searchParams }) {
               groupGiftId={groupGift.id}
               status={groupGift.status}
               minimumEndDate={getMinimumExtensionDate(groupGift.expiresAt)}
+              hasOtherParticipants={hasOtherParticipants}
             />
           )}
           {groupGift.status === "funding" && !user && (

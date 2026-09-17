@@ -134,7 +134,7 @@ test("기존 참여 여부는 회원 ID 또는 인증 이메일과 paid 상태�
   assert.equal(queries.length, 2);
 });
 
-function groupGift(status = "funding", currentAmount = 10000) {
+function groupGift(status = "funding", currentAmount = 10000, contributions = []) {
   return {
     id: "gift-id",
     organizerId: "organizer-id",
@@ -153,13 +153,14 @@ function groupGift(status = "funding", currentAmount = 10000) {
     },
     organizer: { name: "개설자" },
     recipient: { name: "수령인" },
-    contributions: [],
+    contributions,
   };
 }
 
 function loadGroupGiftPage({
   status = "funding",
   currentAmount = 10000,
+  contributions = [],
   user = null,
   hasContribution = false,
 } = {}) {
@@ -179,7 +180,7 @@ function loadGroupGiftPage({
     "@/components/share-button": "ShareButton",
     "@/components/status-badge": "StatusBadge",
     "@/lib/group-gifts": {
-      getGroupGiftById: async () => groupGift(status, currentAmount),
+      getGroupGiftById: async () => groupGift(status, currentAmount, contributions),
       async hasGroupGiftContribution(participant) {
         contributionQueries.push({ ...participant });
         return hasContribution;
@@ -348,6 +349,24 @@ test("공동선물 개설자에게만 기간 연장·종료 관리 UI를 표시�
 
   assert.equal(management.length, 1);
   assert.equal(management[0].props.status, "funding");
+  assert.equal(management[0].props.hasOtherParticipants, false);
+
+  const organizerWithOtherParticipant = loadGroupGiftPage({
+    user: { id: "organizer-id", name: "개설자" },
+    contributions: [
+      { userId: "organizer-id", paymentStatus: "paid" },
+      { userId: "other-user-id", paymentStatus: "paid" },
+    ],
+  });
+  const organizerWithOtherParticipantTree = await organizerWithOtherParticipant.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+  });
+  const blockedManagement = findElements(
+    organizerWithOtherParticipantTree,
+    (node) => node.type === "GroupGiftManagement",
+  )[0];
+
+  assert.equal(blockedManagement.props.hasOtherParticipants, true);
 
   const otherUser = loadGroupGiftPage({
     user: { id: "other-user-id", name: "다른 사용자" },
@@ -719,8 +738,8 @@ test("첫 참여로 목표 금액을 채우면 공동선물 상세 대신 주문
   assert.equal(completed.calls.revalidated.includes("/seller/orders"), true);
 });
 
-test("공동선물 시작 폼은 종료일 다음에 첫 참여 금액을 받고 연장 UI를 표시하지 않는다", () => {
-  const forms = loadSource("app/group-gifts/group-gift-forms.js", {
+function loadGroupGiftForms() {
+  return loadSource("app/group-gifts/group-gift-forms.js", {
     react: {
       useActionState: (action, state) => [state, action, false],
       useState: (value) => [value, () => {}],
@@ -736,6 +755,10 @@ test("공동선물 시작 폼은 종료일 다음에 첫 참여 금액을 받고
     },
     "@/lib/utils/format": { formatWon: (value) => `${value}원` },
   });
+}
+
+test("공동선물 시작 폼은 종료일 다음에 첫 참여 금액을 받고 연장 UI를 표시하지 않는다", () => {
+  const forms = loadGroupGiftForms();
   const tree = forms.CreateGroupGiftForm({
     product: { id: "product-id", name: "상품", price: 50000 },
     recipient: { id: "recipient-id", name: "받는 사람" },
@@ -757,6 +780,39 @@ test("공동선물 시작 폼은 종료일 다음에 첫 참여 금액을 받고
   assert.equal(findText(tree, "공동선물 시작하기"), true);
   assert.equal(findText(tree, "새 종료일"), false);
   assert.equal(findText(tree, "모집 기간 연장"), false);
+});
+
+test("다른 사용자의 참여가 있으면 모집 종료 버튼을 비활성화하고 이유를 안내한다", () => {
+  const forms = loadGroupGiftForms();
+  const blockedTree = forms.GroupGiftManagement({
+    groupGiftId: "gift-id",
+    status: "funding",
+    minimumEndDate: "2026-10-01",
+    hasOtherParticipants: true,
+  });
+  const blockedButton = findElements(
+    blockedTree,
+    (node) => node.type === "button" && findText(node, "함께 선물 모집 종료"),
+  )[0];
+
+  assert.equal(blockedButton.props.disabled, true);
+  assert.equal(
+    findText(blockedTree, "다른 참여자가 있어 모집을 종료할 수 없습니다."),
+    true,
+  );
+
+  const creatorOnlyTree = forms.GroupGiftManagement({
+    groupGiftId: "gift-id",
+    status: "funding",
+    minimumEndDate: "2026-10-01",
+    hasOtherParticipants: false,
+  });
+  const creatorOnlyButton = findElements(
+    creatorOnlyTree,
+    (node) => node.type === "button" && findText(node, "함께 선물 모집 종료"),
+  )[0];
+
+  assert.equal(creatorOnlyButton.props.disabled, false);
 });
 
 test("목표가 남은 참여 성공은 현재 화면에 성공 상태를 반환하고 저장 실패는 오류를 반환한다", async () => {
