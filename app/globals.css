@@ -1427,46 +1427,84 @@ img {
 .recipient-summary small { color: var(--muted); font-size: var(--font-size-xs); }
 .recipient-summary strong { font-size: 18px; }
 
-.gift-card {
+.gift-card,
+.group-message-card {
   position: relative;
   overflow: hidden;
-  margin-bottom: 24px;
-  padding: clamp(34px, 7vw, 66px);
   color: #593c48;
-  border: 10px solid white;
-  border-radius: 30px;
   background:
-    radial-gradient(circle at 12% 18%, #ffffff 0 4px, transparent 5px),
-    radial-gradient(circle at 88% 20%, #f7b9b2 0 7px, transparent 8px),
-    radial-gradient(circle at 80% 85%, #a99be6 0 5px, transparent 6px),
-    linear-gradient(145deg, #ffe1d9, #fff5e5 54%, #e8e2ff);
-  box-shadow: var(--shadow);
+    radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.9) 0 4px, transparent 5px),
+    radial-gradient(circle at 87% 20%, rgba(247, 185, 178, 0.68) 0 6px, transparent 7px),
+    radial-gradient(circle at 82% 86%, rgba(169, 155, 230, 0.58) 0 5px, transparent 6px),
+    linear-gradient(150deg, #ffe8e2 0%, #fff8e9 52%, #eee9ff 100%);
+  box-shadow: 0 18px 48px rgba(91, 67, 76, 0.11);
+}
+
+.gift-card {
+  width: 100%;
+  max-width: 430px;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0 auto 28px;
+  padding: 44px 36px;
+  border: 8px solid rgba(255, 255, 255, 0.94);
+  border-radius: 30px;
   text-align: center;
 }
 
-.gift-card > p {
+.gift-card-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  margin: 0 auto 22px;
   color: var(--primary-dark);
-  font-size: var(--font-size-xs);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 22px rgba(120, 83, 95, 0.07);
+}
+
+.gift-card-intro,
+.group-message-card-intro {
+  color: var(--primary-dark);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.5;
+}
+
+.gift-card blockquote {
+  max-width: 340px;
+  margin: 28px auto 0;
+  color: #4b3440;
+  font-size: clamp(27px, 3.1vw, 34px);
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.gift-card-sender,
+.group-message-card-sender {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 30px;
+  color: rgba(89, 60, 72, 0.64);
+  font-size: var(--font-size-sm);
+}
+
+.gift-card-sender strong,
+.group-message-card-sender strong {
+  color: #593c48;
+  font-size: 16px;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.gift-card h1,
-.gift-card h2 {
-  margin: 12px 0 18px;
-  font-size: clamp(30px, 5vw, 46px);
-  line-height: 1.15;
-}
-
-.gift-card blockquote { max-width: 620px; margin: auto; font-size: 18px; }
-.gift-card small { display: block; margin-top: 22px; color: rgba(89, 60, 72, 0.65); }
-
-.gift-card-sparkle {
-  position: absolute;
-  top: 20px;
-  right: 25px;
-  font-size: 30px;
 }
 
 .order-result-card,
@@ -1485,56 +1523,118 @@ img {
 .group-message-heading { margin-bottom: 12px; }
 .group-message-heading h2 { margin-top: 3px; font-size: 23px; }
 
-.group-message-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
-  align-items: start;
-  gap: 12px;
+.group-message-carousel {
+  width: 100%;
+  max-width: 450px;
+  margin-inline: auto;
+}
+
+.group-message-viewport {
+  overflow: hidden;
+  border-radius: 30px;
+  touch-action: pan-y;
+}
+
+.group-message-viewport:focus-visible {
+  outline: 3px solid rgba(239, 106, 103, 0.22);
+  outline-offset: 2px;
+}
+
+.group-message-track {
+  display: flex;
+  align-items: stretch;
+  transition: transform 480ms ease;
+}
+
+.group-message-slide {
+  min-width: 0;
+  flex: 0 0 100%;
+  display: flex;
+  padding: 10px;
 }
 
 .group-message-card {
-  position: relative;
-  overflow: hidden;
-  padding: 16px 17px 15px;
-  color: #593c48;
-  border: 4px solid rgba(255, 255, 255, 0.9);
-  border-radius: var(--radius-medium);
-  background:
-    radial-gradient(circle at 12% 18%, #ffffff 0 2px, transparent 3px),
-    radial-gradient(circle at 88% 20%, #f7b9b2 0 4px, transparent 5px),
-    linear-gradient(145deg, #ffe7e0, #fff7e9 56%, #ece7ff);
-  box-shadow: 0 10px 28px rgba(76, 50, 57, 0.08);
-}
-
-.group-message-card strong {
-  display: block;
-  padding-right: 22px;
-  color: #593c48;
-  font-size: var(--font-size-sm);
-  font-weight: 900;
+  min-height: 500px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 34px 34px;
+  border: 8px solid rgba(255, 255, 255, 0.94);
+  border-radius: 30px;
+  text-align: center;
 }
 
 .group-message-card blockquote {
-  margin-top: 6px;
-  color: rgba(89, 60, 72, 0.78);
-  font-size: var(--font-size-sm);
+  max-width: 330px;
+  margin: 26px auto 0;
+  color: #4b3440;
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 850;
+  letter-spacing: -0.03em;
   line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
-.group-message-card-sparkle {
-  position: absolute;
-  top: 11px;
-  right: 13px;
-  color: rgba(216, 84, 88, 0.7);
-  font-size: 15px;
-}
+.group-message-card-icon { margin-bottom: 20px; }
 
 .group-message-card .group-message-contribution-track {
-  height: 5px;
-  margin: 12px 0 0;
+  height: 4px;
+  width: 100%;
+  max-width: 300px;
+  margin: 28px auto 0;
   background: rgba(89, 60, 72, 0.12);
+}
+
+.group-message-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.group-message-arrow {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: #65535e;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.group-message-arrow:hover,
+.group-message-arrow:focus-visible {
+  color: var(--primary-dark);
+  border-color: #d8c8c5;
+  background: var(--surface);
+}
+
+.group-message-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.group-message-dot {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 50%;
+  background: #d8cdca;
+  transition: width 180ms ease, background 180ms ease;
+}
+
+.group-message-dot.active {
+  width: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--primary);
 }
 
 .order-result-card > .product-image,
@@ -1708,10 +1808,7 @@ img {
 .acceptance-grid > .gift-card {
   position: sticky;
   top: 100px;
-  min-height: 530px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-self: start;
 }
 
 .acceptance-product {
@@ -1827,7 +1924,27 @@ img {
   }
 
   .home-alert-banner .button { grid-column: 1 / -1; width: 100%; }
-  .group-message-grid { grid-template-columns: 1fr; }
+
+  .gift-card {
+    min-height: 450px;
+    padding: 34px 24px;
+    border-width: 7px;
+    border-radius: 24px;
+  }
+
+  .gift-card blockquote {
+    margin-top: 24px;
+    font-size: clamp(25px, 7.2vw, 31px);
+  }
+
+  .group-message-slide { padding: 7px 2px 10px; }
+
+  .group-message-card {
+    min-height: 450px;
+    padding: 34px 24px 30px;
+    border-width: 7px;
+    border-radius: 24px;
+  }
 
   .product-card-body { padding: 14px; }
   .product-name { font-size: 15px; }

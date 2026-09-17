@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import AcceptGiftForm from "@/app/gifts/accept/[token]/accept-gift-form";
+import { GiftIcon } from "@/components/icons";
 import ProductImage from "@/components/product-image";
 import { listAddresses } from "@/lib/addresses";
 import { getGiftByAcceptanceToken } from "@/lib/orders";
@@ -23,13 +24,18 @@ export default async function AcceptGiftPage({ params }) {
 
   return (
     <section className="container page-section acceptance-grid">
-      <div className={`gift-card gift-card-${gift.card.theme ?? "warm-confetti"}`}>
-        <span className="gift-card-sparkle">✦</span>
-        <p>당신을 위한 축하 카드</p>
-        <h1>{gift.card.title}</h1>
+      <article
+        className={`gift-card gift-card-${gift.card.theme ?? "warm-confetti"}`}
+        aria-label={`${user.name ?? "친구"}님에게 도착한 축하 카드`}
+      >
+        <span className="gift-card-icon" aria-hidden="true"><GiftIcon size={20} /></span>
+        <p className="gift-card-intro">{user.name ?? "친구"}님에게 선물이 도착했어요</p>
         <blockquote>{gift.card.message}</blockquote>
-        <small>보낸 사람 · {gift.sender?.name ?? "친구"}</small>
-      </div>
+        <p className="gift-card-sender">
+          <span>From.</span>
+          <strong>{gift.sender?.name ?? "친구"}</strong>
+        </p>
+      </article>
       <div>
         <div className="info-card acceptance-product">
           <ProductImage

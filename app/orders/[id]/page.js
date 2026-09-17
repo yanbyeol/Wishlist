@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import GroupGiftMessageCards from "@/components/group-gift-message-cards";
+import { GiftIcon } from "@/components/icons";
 import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
@@ -54,16 +55,20 @@ export default async function OrderDetailPage({ params, searchParams }) {
       </div>
 
       {order.card && order.type !== "group" && (isSender || isRecipient) && (
-        <div className={`gift-card gift-card-${order.card.theme ?? "warm-confetti"}`}>
-          <span className="gift-card-sparkle">✦</span>
-          <p>WishMate celebration card</p>
-          <h2>{order.card.title}</h2>
+        <article
+          className={`gift-card gift-card-${order.card.theme ?? "warm-confetti"}`}
+          aria-label={`${order.recipient?.name ?? "친구"}님에게 도착한 축하 카드`}
+        >
+          <span className="gift-card-icon" aria-hidden="true"><GiftIcon size={20} /></span>
+          <p className="gift-card-intro">
+            {order.recipient?.name ?? "친구"}님에게 선물이 도착했어요
+          </p>
           <blockquote>{order.card.message}</blockquote>
-          <small>
-            {`보낸 사람 · ${order.sender?.name ?? "친구"}`}
-            {` · AI 축하 카드 · ${order.card.generationProvider === "mock" ? "데모 생성" : order.card.generationProvider}`}
-          </small>
-        </div>
+          <p className="gift-card-sender">
+            <span>From.</span>
+            <strong>{order.sender?.name ?? "친구"}</strong>
+          </p>
+        </article>
       )}
 
       {order.type === "group" && (isSender || isRecipient) && (

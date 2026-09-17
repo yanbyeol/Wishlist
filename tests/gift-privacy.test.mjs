@@ -238,7 +238,14 @@ function findElements(tree, predicate) {
   return found;
 }
 
-function pageOrder(address) {
+function getText(node) {
+  if (Array.isArray(node)) return node.map(getText).join("");
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (!node || typeof node !== "object" || !node.props) return "";
+  return getText(node.props.children);
+}
+
+function pageOrder(address, card = null) {
   return {
     id: "order-id",
     type: "single",
@@ -250,7 +257,7 @@ function pageOrder(address) {
     status: "preparing",
     shippingAddress: address,
     delivery: { trackingNumber: "WM-ORDER-ID" },
-    card: null,
+    card,
     groupGift: null,
     contributions: [],
     sender: { name: "보낸 사람" },
@@ -259,20 +266,21 @@ function pageOrder(address) {
   };
 }
 
-function loadOrderPage({ userId, address, view = "" }) {
+function loadOrderPage({ userId, address, view = "", card = null }) {
   const calls = [];
   const Page = loadSource("app/orders/[id]/page.js", {
     "next/link": "Link",
     "next/server": { connection: async () => {} },
     "next/navigation": { notFound() { throw new Error("NOT_FOUND"); } },
     "@/components/group-gift-message-cards": "GroupGiftMessageCards",
+    "@/components/icons": { GiftIcon: "GiftIcon" },
     "@/components/product-image": "ProductImage",
     "@/components/share-button": "ShareButton",
     "@/components/status-badge": "StatusBadge",
     "@/lib/orders": {
       async getOrderDetails(orderId, viewerId, orderView) {
         calls.push({ orderId, viewerId, orderView });
-        return pageOrder(address);
+        return pageOrder(address, card);
       },
     },
     "@/lib/session": { requireUser: async () => ({ id: userId }) },
@@ -285,6 +293,42 @@ function loadOrderPage({ userId, address, view = "" }) {
 
   return { Page, calls };
 }
+
+test("혼자 선물 축하 카드는 메시지와 보낸 사람을 중심으로 표시한다", async () => {
+  const card = {
+    message: "늘 행복하고 건강하길 바라!",
+    theme: "warm-confetti",
+  };
+  const recipient = loadOrderPage({
+    userId: "recipient-id",
+    address: shippingAddress,
+    card,
+  });
+  const tree = await recipient.Page({
+    params: Promise.resolve({ id: "order-id" }),
+    searchParams: Promise.resolve({}),
+  });
+  const giftCard = findElements(
+    tree,
+    (node) => String(node.props.className ?? "").startsWith("gift-card "),
+  )[0];
+  const intro = findElements(
+    giftCard,
+    (node) => node.props.className === "gift-card-intro",
+  )[0];
+  const message = findElements(giftCard, (node) => node.type === "blockquote")[0];
+  const sender = findElements(
+    giftCard,
+    (node) => node.props.className === "gift-card-sender",
+  )[0];
+
+  assert.equal(getText(intro), "받는 사람님에게 선물이 도착했어요");
+  assert.equal(getText(message), "늘 행복하고 건강하길 바라!");
+  assert.equal(
+    findElements(sender, (node) => node.type === "strong")[0].props.children,
+    "보낸 사람",
+  );
+});
 
 test("보낸 선물 상세 화면은 사용자 ID로 정리된 주문을 조회하고 배송지 카드를 렌더링하지 않는다", async () => {
   const sender = loadOrderPage({ userId: "sender-id", address: null });

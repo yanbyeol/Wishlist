@@ -584,10 +584,30 @@ function findElements(tree, predicate) {
   return found;
 }
 
-test("공동선물 축하 메시지는 작성한 참여자마다 독립된 소형 카드로 렌더링한다", () => {
+test("혼자 선물 축하 카드 생성 문구는 받는 사람을 기준으로 표시한다", async () => {
+  const provider = loadSource(
+    "lib/ai/providers/mock-gift-card.js",
+    {},
+  );
+  const generatedCard = await provider.generateMockGiftCard({
+    recipientName: "한별",
+    messages: ["축하해!"],
+  });
+
+  assert.equal(generatedCard.title, "한별님에게 선물이 도착했어요");
+});
+
+test("공동선물 축하 메시지는 참여자별 카드 한 장을 캐러셀로 렌더링한다", () => {
   const GroupGiftMessageCards = loadSource(
     "components/group-gift-message-cards.js",
-    {},
+    {
+      react: {
+        useEffect() {},
+        useRef: (initialValue) => ({ current: initialValue }),
+        useState: (initialValue) => [initialValue, () => {}],
+      },
+      "@/components/icons": { GiftIcon: () => null },
+    },
   ).default;
   const tree = GroupGiftMessageCards({
     contributions: [
@@ -602,6 +622,13 @@ test("공동선물 축하 메시지는 작성한 참여자마다 독립된 소�
     tree,
     (node) => node.props.className === "contribution-progress-track group-message-contribution-track",
   );
+  const slides = findElements(tree, (node) => node.props.className === "group-message-slide");
+  const arrows = findElements(tree, (node) => node.props.className === "group-message-arrow");
+  const dots = findElements(
+    tree,
+    (node) => String(node.props.className ?? "").startsWith("group-message-dot "),
+  );
+  const track = findElements(tree, (node) => node.props.className === "group-message-track")[0];
 
   assert.equal(cards.length, 2);
   assert.deepEqual(
@@ -617,5 +644,20 @@ test("공동선물 축하 메시지는 작성한 참여자마다 독립된 소�
   assert.deepEqual(
     progressBars.map((bar) => bar.props["aria-label"]),
     ["한별님의 상대적인 기여도", "민지님의 상대적인 기여도"],
+  );
+  assert.deepEqual(slides.map((slide) => slide.props["aria-hidden"]), [false, true]);
+  assert.equal(track.props.style.transform, "translateX(-0%)");
+  assert.equal(arrows.length, 2);
+  assert.equal(dots.length, 2);
+
+  const singleCardTree = GroupGiftMessageCards({
+    contributions: [
+      { id: "one", nickname: "한별", amount: 30000, message: "생일 축하해!" },
+    ],
+    totalAmount: 50000,
+  });
+  assert.equal(
+    findElements(singleCardTree, (node) => node.props.className === "group-message-arrow").length,
+    0,
   );
 });
