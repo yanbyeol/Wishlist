@@ -1,0 +1,32 @@
+const allowedSorts = new Set(["newest", "price_asc", "price_desc", "popular"]);
+
+function getSingleValue(query, name) {
+  if (query instanceof URLSearchParams) {
+    const values = query.getAll(name);
+    return values.length === 1 ? values[0] : "";
+  }
+
+  return typeof query?.[name] === "string" ? query[name] : "";
+}
+
+export function getProductFilters(query) {
+  const requestedSort = getSingleValue(query, "sort");
+
+  return {
+    category: getSingleValue(query, "category"),
+    keyword: getSingleValue(query, "q").trim(),
+    sort: allowedSorts.has(requestedSort) ? requestedSort : "newest",
+    excludeSoldOut: getSingleValue(query, "excludeSoldOut") === "1",
+  };
+}
+
+export function getProductFilterPath({ category, keyword, sort, excludeSoldOut }) {
+  const params = new URLSearchParams();
+
+  if (category) params.set("category", category);
+  if (keyword) params.set("q", keyword);
+  if (sort !== "newest") params.set("sort", sort);
+  if (excludeSoldOut) params.set("excludeSoldOut", "1");
+
+  return params.size > 0 ? `/?${params}` : "/";
+}
