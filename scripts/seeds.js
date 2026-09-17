@@ -52,21 +52,40 @@ async function createSeed() {
   const categories = ["디지털", "리빙", "패션", "뷰티", "식품", "취미"].map((name, index) =>
     document(21 + index, { name, sortOrder: index }));
   const products = [
-    [31, 2, 21, "무선 노이즈 캔슬링 헤드폰", 240000, 12, "음악에 집중하는 시간을 위한 무선 헤드폰. 충전 케이블과 보관 케이스 포함.", "headphones.jpg"],
-    [32, 3, 22, "세라믹 머그 2종 세트", 32000, 25, "따뜻한 커피를 함께 즐기는 350ml 머그 세트. 크림과 그린 색상.", "ceramic-mugs.jpg"],
-    [33, 4, 23, "데일리 캔버스 토트백", 45000, 18, "책과 노트북을 넉넉하게 담는 면 소재 가방. 내부 수납 포켓 포함.", "canvas-tote.jpg"],
-    [34, 2, 24, "핸드크림 선물 세트", 28000, 40, "서로 다른 향의 30ml 핸드크림 3종. 선물 포장 포함.", "hand-cream-set.jpg"],
-    [35, 3, 25, "드립백 커피 컬렉션", 18000, 30, "세 가지 원두를 담은 드립백 12개입. 간편하게 즐기는 커피 선물.", "drip-coffee.jpg"],
-    [36, 4, 26, "입문용 수채화 키트", 56000, 9, "24색 물감, 붓, 전용 스케치북으로 시작하는 나만의 취미.", "watercolor-kit.jpg"],
-    [37, 1, 21, "휴대용 블루투스 스피커", 120000, 8, "책상 위와 나들이에서 사용하는 소형 스피커. USB-C 충전 지원.", "bluetooth-speaker.jpg"],
-    [38, 1, 22, "포근한 니트 블랭킷", 68000, 0, "소파 위에서 덮기 좋은 100×150cm 담요. 현재 품절된 상품 예시.", "knit-blanket.jpg"],
-  ].map(([number, seller, category, name, price, quantity, description, imageFile]) => document(number, {
-    sellerId: id(seller).toHexString(),
-    category: categories.find((entry) => entry._id.equals(id(category))).name,
-    name, price, currency: "KRW", quantity, description,
-    imageUrl: `/images/products/${imageFile}`,
-    status: quantity ? "active" : "sold_out",
-  }));
+    [31, 2, 21, "무선 노이즈 캔슬링 헤드폰", 240000, 12, "음악에 집중하는 시간을 위한 오버이어 무선 헤드폰. 장시간 착용에도 편안한 쿠션과 USB-C 충전을 지원합니다.", "headphones.jpg"],
+    [32, 3, 22, "세라믹 머그 2종 세트", 32000, 25, "따뜻한 음료를 즐기기 좋은 350ml 세라믹 머그 2종 세트. 크림과 세이지 그린 컬러로 구성했습니다.", "ceramic-mugs.jpg"],
+    [33, 4, 23, "데일리 캔버스 토트백", 45000, 18, "책과 노트북을 넉넉하게 담을 수 있는 면 소재 토트백. 내부 수납 포켓과 안정적인 손잡이를 더했습니다.", "canvas-tote.jpg"],
+    [34, 2, 24, "핸드크림 선물 세트", 28000, 40, "은은한 향의 30ml 핸드크림 3종으로 구성한 선물 세트. 휴대하기 좋은 크기로 데일리 보습에 적합합니다.", "hand-cream-set.jpg"],
+    [35, 3, 25, "드립백 커피 컬렉션", 18000, 30, "서로 다른 풍미의 원두를 담은 드립백 12개입 세트. 간편하게 즐길 수 있는 홈카페용 커피입니다.", "drip-coffee.jpg"],
+    [36, 4, 26, "입문용 수채화 키트", 56000, 9, "24색 수채화 물감과 붓, 팔레트, 전용 스케치북으로 구성한 입문용 취미 세트입니다.", "watercolor-kit.jpg"],
+    [37, 1, 21, "휴대용 블루투스 스피커", 120000, 8, "책상 위나 나들이에서 사용하기 좋은 컴팩트한 블루투스 스피커. USB-C 충전과 무선 연결을 지원합니다.", "bluetooth-speaker.jpg"],
+    [38, 1, 22, "포근한 니트 블랭킷", 68000, 0, "소파와 침실에서 사용하기 좋은 100×150cm 니트 블랭킷. 부드러운 촉감과 차분한 아이보리 컬러가 특징입니다.", "knit-blanket.jpg"],
+
+    [39, 2, 21, "무선 기계식 키보드", 139000, 14, "경쾌한 타건감과 깔끔한 디자인을 갖춘 무선 기계식 키보드. 블루투스와 유선 연결을 모두 지원합니다.", "mechanical-keyboard.jpg"],
+    [40, 3, 21, "미니 즉석카메라", 159000, 10, "촬영한 순간을 바로 인화할 수 있는 컴팩트한 즉석카메라. 여행과 기념일 선물로 활용하기 좋습니다.", "instant-camera.jpg"],
+    [41, 4, 24, "우디 플로럴 향수 50ml", 118000, 15, "은은한 플로럴 향과 따뜻한 우디 노트가 어우러진 오 드 퍼퓸. 데일리로 사용하기 좋은 부드러운 향입니다.", "woody-floral-perfume.jpg"],
+    [42, 2, 23, "미니 레더 크로스백", 129000, 20, "부드러운 아이보리 컬러의 미니 크로스백. 휴대폰과 지갑 등 필요한 소지품을 가볍게 수납할 수 있습니다.", "mini-crossbag.jpg"],
+    [43, 3, 23, "클래식 실버 손목시계", 189000, 11, "미니멀한 실버 메탈 디자인의 아날로그 손목시계. 캐주얼과 포멀 스타일 모두에 잘 어울립니다.", "silver-watch.jpg"],
+    [44, 4, 22, "세라믹 티 세트", 42000, 17, "티포트와 머그, 티 스트레이너로 구성한 홈카페용 세라믹 티 세트. 차분한 크림 컬러로 제작했습니다.", "tea-set.jpg"],
+    [45, 1, 22, "LED 무드등", 39000, 22, "침실이나 책상 위에 두기 좋은 따뜻한 색감의 LED 무드등. 은은한 조명으로 공간 분위기를 편안하게 만들어줍니다.", "mood-lamp.jpg"],
+    [46, 1, 21, "슬림 무선 마우스", 59000, 28, "가볍고 조용한 클릭감을 제공하는 무선 마우스. 휴대하기 좋은 슬림한 디자인으로 제작했습니다.", "wireless-mouse.jpg"],
+    [47, 2, 22, "아로마 디퓨저 세트", 49000, 13, "은은한 향으로 공간을 채워주는 디퓨저와 리드 스틱 세트. 침실과 거실에 두기 좋은 인테리어 아이템입니다.", "aroma-diffuser.jpg"],
+    [48, 3, 26, "하드커버 다이어리 세트", 25000, 32, "일정과 기록을 정리하기 좋은 하드커버 다이어리와 펜 세트. 차분한 컬러로 구성했습니다.", "diary-set.jpg"],
+    [49, 4, 23, "데일리 볼캡", 36000, 21, "심플한 자수 디테일을 더한 코튼 볼캡. 계절에 관계없이 데일리로 착용하기 좋은 아이템입니다.", "daily-cap.jpg"],
+    [50, 1, 21, "휴대용 보조배터리", 52000, 16, "스마트폰과 무선기기를 충전할 수 있는 10000mAh 보조배터리. USB-C 입출력을 지원합니다.", "power-bank.jpg"],
+  ].map(([number, seller, category, name, price, quantity, description, imageFile]) =>
+    document(number, {
+      sellerId: id(seller).toHexString(),
+      category: categories.find((entry) => entry._id.equals(id(category))).name,
+      name,
+      price,
+      currency: "KRW",
+      quantity,
+      description,
+      imageUrl: `/images/products/${imageFile}`,
+      status: quantity ? "active" : "sold_out",
+    })
+  );
   const addresses = user.slice(0, 2).map((member, index) => document(41 + index, {
     userId: member._id.toHexString(), label: "집 (테스트)", recipientName: member.name,
     phone: "010-0000-0000", postalCode: "00000", address1: "테스트시 선물로 123",
