@@ -67,7 +67,7 @@ GROUP_GIFT_OTP_FROM=WishMate <gift@example.com>
 
 `GROUP_GIFT_OTP_SECRET`을 생략하면 `BETTER_AUTH_SECRET`을 사용하지만, 운영 환경에서는 별도 키를 권장합니다. 발신 주소는 Resend에서 인증된 도메인을 사용해야 합니다.
 
-시드 계정은 `minji@example.com`, `junho@example.com`, `seoyeon@example.com`, `doyun@example.com`이며 기본 비밀번호는 `WishMate-demo-2026!`입니다. `SEED_PASSWORD` 환경 변수로 변경할 수 있습니다. 시드 스크립트는 production 환경에서 실행되지 않습니다.
+시드 계정은 `minji@example.com`, `junho@example.com`, `seoyeon@example.com`, `doyun@example.com`이며 비밀번호는 모두 `12345678`입니다. 시드 스크립트는 production 환경에서 실행되지 않습니다. 기존 개발 데이터를 지우고 다시 생성하려면 `node scripts/seeds.js --reset`을 실행합니다.
 
 ## 검증 명령
 

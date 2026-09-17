@@ -1,8 +1,9 @@
 /**
  * WishMate 개발용 시드 (docs/README.md 기준).
- * 실행: node scripts/seeds.js / 검사만: node scripts/seeds.js --dry-run
+ * 실행: node scripts/seeds.js / 초기화 후 실행: node scripts/seeds.js --reset
+ * 검사만: node scripts/seeds.js --dry-run
  * 프로젝트 루트 .env.local 등에 MONGODB_URI, MONGODB_DB 설정.
- * 로그인: minji@example.com 등 / SEED_PASSWORD (기본: WishMate-demo-2026!)
+ * 로그인: minji@example.com 등 / 비밀번호: 12345678
  * 금액은 원(KRW), 앱 데이터의 참조 ID는 문자열. 인증 컬렉션은 Better Auth 기본 이름.
  * 고정 ID로 없는 데이터만 추가하며, 데모 상품·주문의 이미지 경로만 최신 자산으로 맞춘다.
  * 결제·AI 카드·배송은 모두 목업이며 외부 서비스 호출은 하지 않는다.
@@ -16,6 +17,15 @@ const { loadEnvConfig } = require("@next/env");
 
 loadEnvConfig(resolve(__dirname, ".."), true);
 
+const TEST_LOGIN_PASSWORD = "12345678";
+const RESET_RELATED_COLLECTIONS = [
+  "productImages.chunks",
+  "productImages.files",
+  "groupGiftGuestSessions",
+  "groupGiftOtpChallenges",
+  "session",
+  "verification",
+];
 const id = (number) => new ObjectId(`57495348${number.toString(16).padStart(16, "0")}`);
 const now = new Date("2026-09-15T00:00:00.000Z");
 const document = (number, fields) => ({ _id: id(number), ...fields, createdAt: now, updatedAt: now });
@@ -29,9 +39,7 @@ const notificationDocument = (eventKey, fields) => ({
 
 async function createSeed() {
   const { hashPassword } = await import("better-auth/crypto");
-  const password = process.env.SEED_PASSWORD || "WishMate-demo-2026!";
-  assert(password.length >= 8, "SEED_PASSWORD는 8자 이상이어야 합니다.");
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await hashPassword(TEST_LOGIN_PASSWORD);
   const user = [
     [1, "김민지", "minji"], [2, "이준호", "junho"],
     [3, "박서연", "seoyeon"], [4, "최도윤", "doyun"],
@@ -185,10 +193,49 @@ function validate(data) {
   for (const order of data.orders) assert.equal(order.totalAmount, order.productSnapshot.price * order.quantity);
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  assert(args.every((arg) => arg === "--dry-run"), "지원 옵션: --dry-run");
+function parseSeedOptions(args) {
+  const supportedOptions = new Set(["--dry-run", "--reset"]);
+  assert(args.every((arg) => supportedOptions.has(arg)), "지원 옵션: --dry-run, --reset");
   const dryRun = args.includes("--dry-run");
+  const reset = args.includes("--reset");
+  assert(!(dryRun && reset), "--dry-run과 --reset은 함께 사용할 수 없습니다.");
+  return { dryRun, reset };
+}
+
+async function deleteExistingSeedData(db, data, log = console.log) {
+  const seedCollections = [...Object.keys(data)].reverse();
+  const collectionNames = [...RESET_RELATED_COLLECTIONS, ...seedCollections];
+
+  log("[1/2] 기존 seed 관련 데이터 삭제 시작");
+  for (const name of collectionNames) {
+    const result = await db.collection(name).deleteMany({});
+    log(`삭제 ${name}: ${result.deletedCount}개`);
+  }
+  log("[1/2] 기존 seed 관련 데이터 삭제 완료");
+}
+
+async function verifyResetCredentials(db, users) {
+  const { verifyPassword } = await import("better-auth/crypto");
+
+  for (const member of users) {
+    const credentialAccount = await db.collection("account").findOne({
+      userId: member._id,
+      accountId: member._id.toHexString(),
+      providerId: "credential",
+    });
+    assert(credentialAccount?.password, `${member.email} 인증 계정을 찾을 수 없습니다.`);
+    assert.notEqual(credentialAccount.password, TEST_LOGIN_PASSWORD, `${member.email} 비밀번호가 평문으로 저장됐습니다.`);
+    assert(
+      await verifyPassword({ hash: credentialAccount.password, password: TEST_LOGIN_PASSWORD }),
+      `${member.email} 비밀번호 hash 검증에 실패했습니다.`,
+    );
+  }
+
+  console.log(`Better Auth 테스트 계정 ${users.length}개의 비밀번호 hash 검증 완료`);
+}
+
+async function main() {
+  const { dryRun, reset } = parseSeedOptions(process.argv.slice(2));
   if (!dryRun) {
     assert(process.env.NODE_ENV !== "production", "개발용 시드는 production에서 실행할 수 없습니다.");
     assert(process.env.MONGODB_URI && process.env.MONGODB_DB, "MONGODB_URI와 MONGODB_DB를 설정해 주세요.");
@@ -204,12 +251,24 @@ async function main() {
   try {
     await client.connect();
     const db = client.db(process.env.MONGODB_DB);
-    // 같은 이메일의 일반 가입 계정이 있으면 쓰기 전에 중단한다.
-    for (const member of data.user) {
-      const conflict = await db.collection("user").findOne({ email: member.email, _id: { $ne: member._id } });
-      assert(!conflict, `기존 계정과 이메일이 겹칩니다: ${member.email}`);
+    if (reset) {
+      await deleteExistingSeedData(db, data);
+      console.log("[2/2] 새로운 seed 데이터 추가 시작");
+    } else {
+      // 같은 이메일의 일반 가입 계정이 있으면 쓰기 전에 중단한다.
+      for (const member of data.user) {
+        const conflict = await db.collection("user").findOne({ email: member.email, _id: { $ne: member._id } });
+        assert(!conflict, `기존 계정과 이메일이 겹칩니다: ${member.email}`);
+      }
     }
+
     for (const [name, entries] of Object.entries(data)) {
+      if (reset) {
+        const result = await db.collection(name).insertMany(entries);
+        console.log(`${name}: ${result.insertedCount}개 추가`);
+        continue;
+      }
+
       const result = await db.collection(name).bulkWrite(entries.map(({ _id, ...fields }) => ({
         updateOne: { filter: { _id }, update: { $setOnInsert: fields }, upsert: true },
       })));
@@ -232,13 +291,27 @@ async function main() {
       })),
     );
     console.log(`데모 이미지: 상품 ${productImageResult.matchedCount}개, 주문 ${orderImageResult.matchedCount}개 경로 확인`);
-    console.log("WishMate 시드 생성 완료. 테스트 로그인: minji@example.com (비밀번호는 파일 상단 참고)");
+    if (reset) {
+      await verifyResetCredentials(db, data.user);
+      console.log("[2/2] 새로운 seed 데이터 추가 완료");
+    }
+    console.log(`WishMate 시드 생성 완료. 테스트 로그인: minji@example.com / ${TEST_LOGIN_PASSWORD}`);
   } finally {
     await client.close();
+    console.log("MongoDB 연결 종료 완료.");
   }
 }
 
-main().catch((error) => {
-  console.error(`시드 생성 실패: ${error.message}`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`시드 생성 실패: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  deleteExistingSeedData,
+  parseSeedOptions,
+  RESET_RELATED_COLLECTIONS,
+  TEST_LOGIN_PASSWORD,
+};
