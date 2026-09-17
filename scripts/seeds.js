@@ -185,6 +185,16 @@ function validate(data) {
   const exists = (collection, value) => data[collection].some(
     (entry) => entry._id.toHexString() === String(value),
   );
+  assert.equal(
+    new Set(data.wishlists.map((wishlist) => wishlist.userId)).size,
+    data.wishlists.length,
+    "seed wishlists.userId 중복",
+  );
+  assert.equal(
+    new Set(data.wishlistItems.map((item) => `${item.wishlistId}:${item.productId}`)).size,
+    data.wishlistItems.length,
+    "seed wishlistItems의 wishlistId + productId 중복",
+  );
   const references = {
     account: { userId: "user" }, products: { sellerId: "user" },
     addresses: { userId: "user" }, wishlists: { userId: "user" },
