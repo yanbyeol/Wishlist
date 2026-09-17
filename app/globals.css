@@ -838,6 +838,53 @@ img {
   gap: 24px;
 }
 
+.product-pagination,
+.product-pagination-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.product-pagination {
+  margin-top: 34px;
+  flex-wrap: wrap;
+}
+
+.product-pagination button {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  background: var(--surface);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.product-pagination button:hover:not(:disabled),
+.product-pagination button:focus-visible {
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+
+.product-pagination button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.product-pagination button.active {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.product-pagination button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .product-card {
   overflow: hidden;
   border: 1px solid var(--border);
