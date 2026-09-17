@@ -1906,6 +1906,16 @@ img {
   border-radius: 0;
 }
 
+@media (min-width: 471px) {
+  .gift-list-card > .product-image,
+  .gift-list-card > .product-image-fallback {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 1;
+    align-self: start;
+  }
+}
+
 .gift-list-copy { padding: 20px 22px 20px 0; }
 .gift-list-heading { justify-content: space-between; gap: 18px; }
 .gift-list-heading h3 { font-size: 20px; }
