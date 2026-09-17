@@ -156,7 +156,9 @@ export default async function GroupGiftPage({ params, searchParams }) {
             <div className="stack-form">
               <h2>목표 금액을 모두 모았어요!</h2>
               <p>AI 축하 카드와 선물이 준비되었습니다.</p>
-              {groupGift.orderId && [groupGift.organizerId, groupGift.recipientId].includes(user?.id) && (
+              {groupGift.orderId && user && (
+                [groupGift.organizerId, groupGift.recipientId].includes(user.id) || hasContribution
+              ) && (
                 <Link href={`/orders/${groupGift.orderId}`} className="button button-primary button-full">완성된 선물 보기</Link>
               )}
             </div>

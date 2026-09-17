@@ -340,6 +340,40 @@ test("funding 이외 상태와 수령인에게는 참여 폼을 표시하지 않
   assert.equal(findElements(tree, (node) => node.type === "ContributionForm").length, 0);
 });
 
+test("완료된 공동선물의 회원 참여자에게 주문 결과 링크를 표시한다", async () => {
+  const participant = loadGroupGiftPage({
+    status: "completed",
+    user: { id: "member-id", name: "회원" },
+    hasContribution: true,
+  });
+  const participantTree = await participant.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+  });
+  const orderLinks = findElements(
+    participantTree,
+    (node) => node.type === "Link" && node.props.href === "/orders/order-id",
+  );
+
+  assert.equal(orderLinks.length, 1);
+
+  const unrelated = loadGroupGiftPage({
+    status: "completed",
+    user: { id: "other-member-id", name: "다른 회원" },
+    hasContribution: false,
+  });
+  const unrelatedTree = await unrelated.Page({
+    params: Promise.resolve({ id: "gift-id" }),
+  });
+
+  assert.equal(
+    findElements(
+      unrelatedTree,
+      (node) => node.type === "Link" && node.props.href === "/orders/order-id",
+    ).length,
+    0,
+  );
+});
+
 function createContributionForm(initialHasContribution, actionResults) {
   const hookCells = new Map();
   let currentHooks;

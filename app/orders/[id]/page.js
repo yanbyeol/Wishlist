@@ -38,15 +38,13 @@ export default async function OrderDetailPage({ params, searchParams }) {
   const user = await requireUser(callbackPath);
   const order = await getOrderDetails(id, user.id, orderView);
 
-  if (
-    !order ||
-    ![order.senderId, order.recipientId, order.sellerId].includes(user.id)
-  ) {
+  if (!order) {
     notFound();
   }
 
   const isRecipient = user.id === order.recipientId;
   const isSender = user.id === order.senderId;
+  const isParticipant = order.viewerRole === "participant";
   const acceptancePath = order.card?.acceptancePath;
   const groupParticipantCount = order.type === "group"
     ? getGroupParticipantCount(order.contributions)
@@ -82,7 +80,7 @@ export default async function OrderDetailPage({ params, searchParams }) {
         </article>
       )}
 
-      {order.type === "group" && (isSender || isRecipient) && (
+      {order.type === "group" && (isSender || isRecipient || isParticipant) && (
         <GroupGiftMessageCards
           contributions={order.contributions}
           heading={`${groupParticipantCount}명의 마음을 모았어요`}
