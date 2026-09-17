@@ -8,7 +8,7 @@ WishMate는 원하는 상품을 위시리스트에 담아 공유하고, 혼자 �
 - 상품 조회, 카테고리 필터, 등록, 수정, 삭제 또는 판매 종료 처리
 - 개인 위시리스트 추가·해제와 공개 링크 공유
 - 나에게 선물하기와 다른 회원에게 혼자 선물하기
-- 함께 선물하기 개설, 회원 세션 또는 비회원 이메일 OTP 참여, 달성률과 참여 내역 표시
+- 함께 선물하기 개설, 선물 과정 전용 Better Auth 이메일 OTP 인증·참여, 달성률과 참여 내역 표시
 - 목업 결제 후 축하 카드 생성과 선물 수락 링크 발급
 - 저장 배송지 관리, 기본 배송지 자동 입력, 선물 수락 후 배송 요청
 - 마이페이지의 받은 선물·판매 상품·주문 현황과 판매자 배송 상태 관리
@@ -19,7 +19,7 @@ WishMate는 원하는 상품을 위시리스트에 담아 공유하고, 혼자 �
 
 - Next.js 16 App Router, React 19
 - MongoDB
-- Better Auth 이메일·비밀번호 인증
+- Better Auth 이메일·비밀번호 회원 인증 및 선물 과정 전용 이메일 OTP 인증
 - ESLint, Node.js Test Runner
 
 Node.js 20.9 이상과 실행 중인 MongoDB가 필요합니다.
@@ -41,8 +41,7 @@ Node.js 20.9 이상과 실행 중인 MongoDB가 필요합니다.
    BETTER_AUTH_SECRET=개발용으로-충분히-긴-임의의-문자열
    BETTER_AUTH_URL=http://localhost:3000
    GIFT_CARD_PROVIDER=mock
-   GROUP_GIFT_OTP_PROVIDER=mock
-   GROUP_GIFT_OTP_SECRET=개발용으로-충분히-긴-별도-임의의-문자열
+   EMAIL_OTP_PROVIDER=mock
    ```
 
 3. 개발용 데이터를 넣고 서버를 실행합니다.
@@ -56,16 +55,15 @@ Node.js 20.9 이상과 실행 중인 MongoDB가 필요합니다.
 
 로컬의 단독 MongoDB에서는 `MONGODB_TRANSACTIONS=false`를 사용합니다. replica set 또는 mongos로 운영할 때만 `true`로 변경하세요.
 
-로컬 개발에서는 `GROUP_GIFT_OTP_PROVIDER=mock`을 사용하며 화면에 개발용 인증번호가 표시됩니다. 실제 이메일을 발송하려면 아래처럼 Resend 설정을 추가합니다. 운영 환경에서는 `mock` 제공자를 사용할 수 없습니다.
+로컬 개발에서는 `EMAIL_OTP_PROVIDER=mock`을 사용하며 화면에 개발용 인증번호가 표시됩니다. 실제 이메일을 발송하려면 아래처럼 Resend 설정을 추가합니다. 운영 환경에서는 `mock` 제공자를 사용할 수 없습니다.
 
 ```dotenv
-GROUP_GIFT_OTP_PROVIDER=resend
-GROUP_GIFT_OTP_SECRET=운영용으로-충분히-긴-임의의-문자열
+EMAIL_OTP_PROVIDER=resend
 RESEND_API_KEY=re_...
-GROUP_GIFT_OTP_FROM=WishMate <gift@example.com>
+EMAIL_OTP_FROM=WishMate <gift@example.com>
 ```
 
-`GROUP_GIFT_OTP_SECRET`을 생략하면 `BETTER_AUTH_SECRET`을 사용하지만, 운영 환경에서는 별도 키를 권장합니다. 발신 주소는 Resend에서 인증된 도메인을 사용해야 합니다.
+OTP 인증 데이터는 Better Auth가 `BETTER_AUTH_SECRET`으로 암호화해 저장합니다. 이메일 OTP는 혼자 선물하기, 공동선물 참여·개설·관리 과정에서만 제공되며 판매자, 상품, 위시리스트, 마이페이지 같은 회원 전용 기능 권한을 부여하지 않습니다. 발신 주소는 Resend에서 인증된 도메인을 사용해야 합니다. 기존 `GROUP_GIFT_OTP_PROVIDER`, `GROUP_GIFT_OTP_FROM` 설정도 호환됩니다.
 
 시드 계정은 `minji@example.com`, `junho@example.com`, `seoyeon@example.com`, `doyun@example.com`이며 비밀번호는 모두 `12345678`입니다. 시드 스크립트는 production 환경에서 실행되지 않습니다. 기존 개발 데이터를 지우고 다시 생성하려면 `node scripts/seeds.js --reset`을 실행합니다.
 

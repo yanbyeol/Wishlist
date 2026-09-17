@@ -4,14 +4,14 @@ import EmptyState from "@/components/empty-state";
 import ProductCard from "@/components/product-card";
 import ShareButton from "@/components/share-button";
 import { findStartedGroupGiftsForProducts } from "@/lib/group-gifts";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import { getWishlistForUser } from "@/lib/wishlists";
 
 export const metadata = { title: "위시리스트" };
 
 export default async function WishlistPage() {
   await connection();
-  const user = await requireUser("/wishlist");
+  const user = await requireMember("/wishlist");
   const wishlist = await getWishlistForUser(user);
   const startedGroupGifts = await findStartedGroupGiftsForProducts(
     user.id,

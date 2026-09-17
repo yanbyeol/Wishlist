@@ -6,7 +6,7 @@ import { GiftIcon } from "@/components/icons";
 import ProductImage from "@/components/product-image";
 import { listAddresses } from "@/lib/addresses";
 import { getGiftByAcceptanceToken } from "@/lib/orders";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export const metadata = { title: "선물 수락" };
 
@@ -33,7 +33,7 @@ function getGroupGiftSenderLabel(contributions, fallbackName) {
 export default async function AcceptGiftPage({ params }) {
   await connection();
   const { token } = await params;
-  const user = await requireUser(`/gifts/accept/${token}`);
+  const user = await requireMember(`/gifts/accept/${token}`);
   const gift = await getGiftByAcceptanceToken(token, { includeContributions: true });
 
   if (!gift || gift.order.recipientId !== user.id) {

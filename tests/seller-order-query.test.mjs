@@ -47,7 +47,7 @@ function loadActions({ user = { id: firstSellerId }, listSellerOrders = async ()
     "@/lib/constants": { ORDER_STATUS_OPTIONS },
     "@/lib/orders": { listSellerOrders, updateSellerOrderStatus },
     "@/lib/seller-order-filter": { getSellerOrderStatuses, getSellerOrdersReturnPath },
-    "@/lib/session": { async requireUser() { calls.authentication += 1; if (!user) throw new Error("LOGIN_REQUIRED"); return user; } },
+    "@/lib/session": { async requireMember() { calls.authentication += 1; if (!user) throw new Error("LOGIN_REQUIRED"); return user; } },
   }, { FormData });
   return { actions, calls };
 }

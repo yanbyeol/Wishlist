@@ -1,14 +1,14 @@
 import { connection } from "next/server";
 import { listSellerOrders } from "@/lib/orders";
 import { getSellerOrderStatuses } from "@/lib/seller-order-filter";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import SellerOrderBoard from "./seller-order-board";
 
 export const metadata = { title: "판매 주문 관리" };
 
 export default async function SellerOrdersPage({ searchParams }) {
   await connection();
-  const user = await requireUser("/seller/orders");
+  const user = await requireMember("/seller/orders");
   const query = await searchParams;
   const selectedStatuses = getSellerOrderStatuses(query.status);
   const orders = await listSellerOrders(user.id, selectedStatuses);

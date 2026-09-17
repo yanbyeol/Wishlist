@@ -83,6 +83,8 @@ function createOrdersModule(document = orderDocument, contributionDocuments = []
     orderProjection: null,
     cardProjection: null,
     cardQueries: 0,
+    participantFilter: null,
+    participantProjection: null,
     contributionFilter: null,
     contributionSort: null,
   };
@@ -119,6 +121,15 @@ function createOrdersModule(document = orderDocument, contributionDocuments = []
 
       if (name === "contributions") {
         return {
+          async findOne(filter, options) {
+            calls.participantFilter = filter;
+            calls.participantProjection = options?.projection ?? null;
+            return contributionDocuments.find((contribution) => (
+              String(contribution.groupGiftId) === String(filter.groupGiftId) &&
+              String(contribution.userId) === String(filter.userId) &&
+              contribution.paymentStatus === filter.paymentStatus
+            )) ?? null;
+          },
           find(filter) {
             calls.contributionFilter = filter;
             return {
@@ -130,6 +141,14 @@ function createOrdersModule(document = orderDocument, contributionDocuments = []
                 return contributionDocuments;
               },
             };
+          },
+        };
+      }
+
+      if (name === "groupGifts") {
+        return {
+          async findOne() {
+            return { _id: "group-gift-id", targetAmount: 30000 };
           },
         };
       }
@@ -185,7 +204,7 @@ test("보낸 선물 목록 조회는 배송지를 DB에서 읽거나 반환하�
   assert.deepEqual(Object.keys(calls.cardProjection).sort(), ["acceptancePath", "message"]);
 });
 
-test("주문 상세는 보낸 사람에게 배송지를 제거하고 받는 사람과 판매자에게만 제공한다", async () => {
+test("주문 상세 배송지는 보낸 사람에게 숨기고 받는 사람과 판매자에게만 제공한다", async () => {
   const { orders, calls } = createOrdersModule();
 
   const senderOrder = await orders.getOrderDetails("order-id", "sender-id");
@@ -238,6 +257,43 @@ test("주문 상세는 보낸 사람에게 배송지를 제거하고 받는 사�
   const cardQueriesBeforeUnauthorizedRequest = calls.cardQueries;
   assert.equal(await orders.getOrderDetails("order-id", "other-user-id"), null);
   assert.equal(calls.cardQueries, cardQueriesBeforeUnauthorizedRequest);
+});
+
+test("공동선물 결제 완료 참여자는 주문 결과만 조회하고 배송지는 볼 수 없다", async () => {
+  const groupOrder = {
+    ...orderDocument,
+    type: "group",
+    groupGiftId: "group-gift-id",
+  };
+  const contributions = [{
+    _id: "participant-contribution-id",
+    groupGiftId: "group-gift-id",
+    userId: "participant-id",
+    nickname: "참여자",
+    amount: 30000,
+    message: "축하해요!",
+    paymentStatus: "paid",
+  }];
+  const { orders, calls } = createOrdersModule(groupOrder, contributions);
+
+  const participantOrder = await orders.getOrderDetails(
+    "order-id",
+    "participant-id",
+  );
+
+  assert.equal(participantOrder.viewerRole, "participant");
+  assert.equal(participantOrder.shippingAddress, null);
+  assert.equal(participantOrder.contributions.length, 1);
+  assert.equal(calls.participantFilter.groupGiftId, "group-gift-id");
+  assert.equal(calls.participantFilter.userId, "participant-id");
+  assert.equal(calls.participantFilter.paymentStatus, "paid");
+  assert.equal(calls.participantProjection._id, 1);
+  assert.deepEqual(Object.keys(calls.participantProjection), ["_id"]);
+
+  assert.equal(
+    await orders.getOrderDetails("order-id", "unrelated-user-id"),
+    null,
+  );
 });
 
 test("공동선물 배송지 입력 조회는 결제 완료 참여자를 오래된 순서대로 함께 반환한다", async () => {
@@ -351,7 +407,10 @@ function loadOrderPage({
         return pageOrder(address, card, orderOverrides);
       },
     },
-    "@/lib/session": { requireUser: async () => ({ id: userId }) },
+    "@/lib/session": {
+      requireMember: async () => ({ id: userId, isMember: true }),
+      requireUser: async () => ({ id: userId, isMember: true }),
+    },
     "@/lib/utils/format": {
       formatDate: () => "2026년 9월 17일",
       formatWon: (amount) => `${amount}원`,
@@ -379,7 +438,7 @@ function loadAcceptGiftPage(gift) {
       },
     },
     "@/lib/session": {
-      requireUser: async () => ({ id: "recipient-id", name: "받는 사람" }),
+      requireMember: async () => ({ id: "recipient-id", name: "받는 사람", isMember: true }),
     },
   }).default;
 
@@ -526,6 +585,37 @@ test("받은 공동선물 화면은 중복 참여를 제외한 참여자 수와 
   assert.equal(messageCards.props.showParticipantBadges, true);
 });
 
+test("공동선물 참여자는 완료 주문과 참여자별 축하 카드만 조회한다", async () => {
+  const participant = loadOrderPage({
+    userId: "participant-id",
+    address: null,
+    orderOverrides: {
+      type: "group",
+      viewerRole: "participant",
+      contributions: [
+        { id: "one", name: "준호", amount: 20000, message: "축하해!" },
+        { id: "two", name: "도윤", amount: 10000, message: "행복하자!" },
+      ],
+      groupGift: { targetAmount: 30000 },
+    },
+  });
+
+  const tree = await participant.Page({
+    params: Promise.resolve({ id: "order-id" }),
+    searchParams: Promise.resolve({}),
+  });
+  const messageCards = findElements(
+    tree,
+    (node) => node.type === "GroupGiftMessageCards",
+  );
+
+  assert.equal(messageCards.length, 1);
+  assert.equal(
+    findElements(tree, (node) => node.props.className === "info-card address-summary").length,
+    0,
+  );
+});
+
 test("보낸 선물 상세 화면은 사용자 ID로 정리된 주문을 조회하고 배송지 카드를 렌더링하지 않는다", async () => {
   const sender = loadOrderPage({ userId: "sender-id", address: null });
   const senderTree = await sender.Page({
@@ -573,7 +663,7 @@ test("마이페이지의 보낸 선물 상세 링크는 발신자 관점을 유�
         recipient: { name: "받는 사람" },
       }],
     },
-    "@/lib/session": { requireUser: async () => ({ id: "sender-id" }) },
+    "@/lib/session": { requireMember: async () => ({ id: "sender-id", isMember: true }) },
     "@/lib/utils/format": {
       formatDate: () => "2026년 9월 17일",
       getOrderStatusLabel: () => "상품 준비 중",

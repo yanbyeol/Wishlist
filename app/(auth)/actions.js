@@ -2,8 +2,14 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  requestEmailSignInOtp,
+  verifyEmailSignInOtp,
+} from "@/lib/group-gift-otp";
+import { SESSION_ACCESS_MODES, setSessionAccessMode } from "@/lib/session";
+import { normalizeUserEmail } from "@/lib/users";
 import { ensureWishlist } from "@/lib/wishlists";
-import { isValidEmail } from "@/lib/utils/validation";
+import { isValidEmail, isValidOtpCode } from "@/lib/utils/validation";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 
 function readCredentials(formData) {
@@ -30,6 +36,21 @@ function readableAuthError(error, fallback) {
   return fallback;
 }
 
+function getGiftCallback(value) {
+  const callback = sanitizeCallbackPath(value, "");
+
+  if (
+    callback === "/orders/new"
+    || callback.startsWith("/orders/new?")
+    || callback === "/group-gifts/new"
+    || callback.startsWith("/group-gifts/new?")
+  ) {
+    return callback;
+  }
+
+  return "";
+}
+
 export async function signInAction(previousState, formData) {
   const credentials = readCredentials(formData);
 
@@ -39,7 +60,7 @@ export async function signInAction(previousState, formData) {
 
   try {
     const { auth } = await import("@/lib/auth");
-    await auth.api.signInEmail({
+    const result = await auth.api.signInEmail({
       body: {
         email: credentials.email,
         password: credentials.password,
@@ -47,6 +68,7 @@ export async function signInAction(previousState, formData) {
       },
       headers: await headers(),
     });
+    await setSessionAccessMode(result.token, SESSION_ACCESS_MODES.MEMBER);
   } catch (error) {
     return {
       message: readableAuthError(error, "로그인하지 못했습니다. 잠시 후 다시 시도해 주세요."),
@@ -54,6 +76,76 @@ export async function signInAction(previousState, formData) {
   }
 
   redirect(credentials.callback);
+}
+
+export async function requestEmailOtpAction(previousState, formData) {
+  const email = normalizeUserEmail(formData.get("email"));
+  const callback = getGiftCallback(formData.get("callback"));
+
+  if (!callback) {
+    return {
+      message: "선물하기 화면에서 이메일 인증을 다시 시작해 주세요.",
+      error: true,
+      email,
+    };
+  }
+
+  if (!isValidEmail(email)) {
+    return {
+      message: "올바른 이메일을 입력해 주세요.",
+      error: true,
+      email,
+      callback,
+    };
+  }
+
+  try {
+    const result = await requestEmailSignInOtp(email);
+    return {
+      requested: true,
+      email: result.email,
+      callback,
+      message: result.demoCode
+        ? `개발용 인증번호는 ${result.demoCode}입니다.`
+        : `${result.email}로 인증번호를 보냈습니다.`,
+      error: false,
+    };
+  } catch (error) {
+    return {
+      message: String(error?.message ?? "인증번호를 보내지 못했습니다."),
+      error: true,
+      email,
+      callback,
+    };
+  }
+}
+
+export async function verifyEmailOtpAction(previousState, formData) {
+  const email = normalizeUserEmail(formData.get("email"));
+  const code = String(formData.get("code") ?? "").trim();
+  const callback = getGiftCallback(formData.get("callback"));
+
+  if (!callback || !isValidEmail(email) || !isValidOtpCode(code)) {
+    return {
+      message: callback
+        ? "이메일과 6자리 인증번호를 확인해 주세요."
+        : "선물하기 화면에서 이메일 인증을 다시 시작해 주세요.",
+      error: true,
+      email,
+    };
+  }
+
+  try {
+    await verifyEmailSignInOtp(email, code);
+  } catch (error) {
+    return {
+      message: String(error?.message ?? "이메일 인증을 완료하지 못했습니다."),
+      error: true,
+      email,
+    };
+  }
+
+  redirect(callback);
 }
 
 export async function signUpAction(previousState, formData) {
@@ -85,6 +177,7 @@ export async function signUpAction(previousState, formData) {
       },
       headers: await headers(),
     });
+    await setSessionAccessMode(result.token, SESSION_ACCESS_MODES.MEMBER);
     await ensureWishlist(result.user);
   } catch (error) {
     return {

@@ -15,16 +15,19 @@ export const metadata = {
 export default async function RootLayout({ children }) {
   await connection();
   const user = await getCurrentUser();
-  const notificationSummary = user
-    ? await getNotificationSummary(user.id)
+  const member = user?.isMember ? user : null;
+  const notificationSummary = member
+    ? await getNotificationSummary(member.id)
     : { notifications: [], unreadCount: 0 };
 
   return (
     <html lang="ko" data-scroll-behavior="smooth">
       <body>
         <SiteHeader
-          isLoggedIn={Boolean(user)}
-          userName={user?.name ?? ""}
+          isLoggedIn={Boolean(member)}
+          isGiftAuthenticated={Boolean(user && !member)}
+          userName={member?.name ?? ""}
+          giftUserName={user && !member ? user.name : ""}
           notifications={notificationSummary.notifications}
           unreadNotificationCount={notificationSummary.unreadCount}
         />

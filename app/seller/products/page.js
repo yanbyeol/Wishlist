@@ -2,14 +2,14 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { listProductsBySeller } from "@/lib/products";
 import { getSellerProductStatuses } from "@/lib/seller-product-filter";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import SellerProductBoard from "./seller-product-board";
 
 export const metadata = { title: "판매 상품 관리" };
 
 export default async function SellerProductsPage({ searchParams }) {
   await connection();
-  const user = await requireUser("/seller/products");
+  const user = await requireMember("/seller/products");
   const query = await searchParams;
   const selectedStatuses = getSellerProductStatuses(query.status);
   const products = await listProductsBySeller(user.id, selectedStatuses);

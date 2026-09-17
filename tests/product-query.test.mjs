@@ -68,7 +68,7 @@ test("최초 메인 요청은 connection 이후 URL 조건으로 조회하고 �
     "@/components/icons": {},
     "@/lib/orders": { getAddressRequiredGiftSummary: async () => null },
     "@/lib/products": { listProducts: async (filters) => { calls.push({ ...filters }); return [{ id: "product" }]; } },
-    "@/lib/session": { getCurrentUser: async () => { calls.push("session"); return { id: "user", email: "private@example.com" }; } },
+    "@/lib/session": { getCurrentMember: async () => { calls.push("session"); return { id: "user", email: "private@example.com" }; } },
     "@/lib/wishlists": { getWishlistedProductIds: async (id) => { calls.push(id); return ["product"]; } },
   }).default;
   const tree = await Home({ searchParams: Promise.resolve({ category: "리빙", q: " 머그 ", sort: "price_asc", excludeSoldOut: "1" }) });
@@ -103,7 +103,7 @@ test("로그인 홈은 배송지 입력이 필요한 최신 선물을 하나의 
       },
     },
     "@/lib/products": { listProducts: async () => [] },
-    "@/lib/session": { getCurrentUser: async () => ({ id: "session-user" }) },
+    "@/lib/session": { getCurrentMember: async () => ({ id: "session-user" }) },
     "@/lib/wishlists": { getWishlistedProductIds: async () => [] },
   }).default;
 
@@ -134,8 +134,8 @@ function findElements(tree, predicate) {
   return found;
 }
 
-function displayedProduct(name = "기존 상품") {
-  return { id: "product", name, sellerId: "user", quantity: 3 };
+function displayedProduct(name = "기존 상품", id = "product") {
+  return { id, name, sellerId: "user", quantity: 3 };
 }
 
 function createBoard(initialSearch = "", options = {}) {
@@ -225,6 +225,14 @@ function createBoard(initialSearch = "", options = {}) {
     },
     pop(search) { window.location.search = search; listeners.get("popstate")(); render(); },
     cards: () => findElements(tree, (node) => node.type === Card).map((node) => node.props),
+    pageButton: (label) => findElements(
+      tree,
+      (node) => node.type === "button" && (node.props.children === label || node.props["aria-label"] === label),
+    )[0]?.props,
+    moveToPage(page) {
+      this.pageButton(`${page}페이지`).onClick();
+      render();
+    },
     category: (name) => findElements(tree, (node) => node.type === Link && node.props.children === name)[0].props,
     heading: () => findElements(tree, (node) => node.type === "h2")[0].props.children,
     unmount: () => cells.forEach((cell) => cell.cleanup?.()),
@@ -296,7 +304,7 @@ test("카테고리 링크와 위시리스트 복귀 주소는 부분 조회 이�
   board.submit({ q: "머그", sort: "price_asc", excludeSoldOut: true });
   const category = board.category("리빙");
   const url = new URL(category.href, "http://localhost");
-  assert.deepEqual(getProductFilters(url.searchParams), { category: "리빙", keyword: "머그", sort: "price_asc", excludeSoldOut: true });
+  assert.deepEqual(getProductFilters(url.searchParams), { category: "리빙", keyword: "머그", sort: "price_asc", excludeSoldOut: true, page: 1 });
   assert.equal(category.prefetch, false);
   assert.equal(category.scroll, false);
   assert.equal(board.cards()[0].isWishlisted, true);
@@ -304,6 +312,41 @@ test("카테고리 링크와 위시리스트 복귀 주소는 부분 조회 이�
   assert.equal(board.cards()[0].returnPath, "/?q=%EB%A8%B8%EA%B7%B8&sort=price_asc&excludeSoldOut=1");
   board.requests[0].resolve({ products: [], error: "" });
   await board.tasks[0];
+});
+
+test("상품을 8개씩 표시하고 페이지 이동은 재조회 없이 URL과 목록만 변경한다", () => {
+  const products = Array.from({ length: 20 }, (_, index) => displayedProduct(`상품 ${index + 1}`, `product-${index + 1}`));
+  const board = createBoard("", { initialProducts: products, wishlistedIds: [] });
+
+  assert.deepEqual(board.cards().map(({ product }) => product.id), products.slice(0, 8).map(({ id }) => id));
+  assert.equal(board.pageButton("이전").disabled, true);
+  assert.equal(board.pageButton("1페이지")["aria-current"], "page");
+  assert.ok(board.pageButton("3페이지"));
+
+  board.moveToPage(2);
+  assert.equal(board.requests.length, 0);
+  assert.equal(board.history.at(-1), "/?page=2#products");
+  assert.deepEqual(board.cards().map(({ product }) => product.id), products.slice(8, 16).map(({ id }) => id));
+  assert.equal(board.pageButton("2페이지")["aria-current"], "page");
+  assert.equal(board.pageButton("이전").disabled, false);
+
+  board.moveToPage(3);
+  assert.deepEqual(board.cards().map(({ product }) => product.id), products.slice(16).map(({ id }) => id));
+  assert.equal(board.pageButton("다음").disabled, true);
+});
+
+test("검색·정렬 조건이나 카테고리를 바꾸면 상품 페이지를 1페이지로 초기화한다", () => {
+  const products = Array.from({ length: 12 }, (_, index) => displayedProduct(`상품 ${index + 1}`, `product-${index + 1}`));
+  const board = createBoard("", { initialProducts: products, wishlistedIds: [] });
+
+  board.moveToPage(2);
+  assert.equal(new URL(board.history.at(-1), "http://localhost").searchParams.get("page"), "2");
+  assert.equal(new URL(board.category("리빙").href, "http://localhost").searchParams.has("page"), false);
+
+  board.submit({ q: "머그", sort: "popular" });
+  assert.equal(new URL(board.history.at(-1), "http://localhost").searchParams.has("page"), false);
+  assert.deepEqual(board.cards().map(({ product }) => product.id), products.slice(0, 8).map(({ id }) => id));
+  assert.equal(board.pageButton("1페이지")["aria-current"], "page");
 });
 
 test("위시리스트 갱신의 새 서버 데이터가 부분 조회보다 우선하고 이전 요청은 무시한다", async () => {

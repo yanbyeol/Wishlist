@@ -38,29 +38,28 @@ function loadSource(path, dependencies, globals = {}) {
 
 const message = "공동선물이 진행 중인 상품은 위시리스트에서 삭제할 수 없어요.";
 const groupGiftUtils = loadSource("lib/utils/group-gift.js", {});
+const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function createWishlistDatabase(startedGroupGift) {
   const calls = {
     groupGiftQuery: null,
     deletedItems: 0,
-    insertedItems: 0,
   };
   const wishlist = { _id: "wishlist-id", userId: "recipient-id", title: "위시리스트" };
   const existingItem = { _id: "item-id", wishlistId: "wishlist-id", productId: "product-id" };
   const collections = {
     wishlists: {
+      async createIndex() {},
       findOne: async () => wishlist,
     },
     products: {
       findOne: async () => ({ _id: "product-id", status: "active" }),
     },
     wishlistItems: {
+      async createIndex() {},
       findOne: async () => existingItem,
-      async deleteOne() {
+      async deleteMany() {
         calls.deletedItems += 1;
-      },
-      async insertOne() {
-        calls.insertedItems += 1;
       },
     },
     groupGifts: {
@@ -101,9 +100,9 @@ function loadWishlists(db) {
 
 test("참여금이 0원인 공동선물 상품은 위시리스트에서 삭제할 수 있다", async () => {
   const { db, calls } = createWishlistDatabase(null);
-  const { toggleWishlistProduct } = loadWishlists(db);
+  const { setWishlistProduct } = loadWishlists(db);
 
-  const result = await toggleWishlistProduct({ id: "recipient-id" }, "product-id");
+  const result = await setWishlistProduct({ id: "recipient-id" }, "product-id", false);
 
   assert.equal(result.added, false);
   assert.equal(result.removalBlocked, false);
@@ -120,18 +119,130 @@ test("최초 참여 후에는 서버 삭제 로직이 위시리스트 해제를 
     status: "funding",
     currentAmount: 10000,
   });
-  const { toggleWishlistProduct } = loadWishlists(db);
+  const { setWishlistProduct } = loadWishlists(db);
 
-  const result = await toggleWishlistProduct({ id: "recipient-id" }, "product-id");
+  const result = await setWishlistProduct({ id: "recipient-id" }, "product-id", false);
 
   assert.equal(result.added, false);
   assert.equal(result.removalBlocked, true);
   assert.equal(calls.deletedItems, 0);
 });
 
+function createWishlistAddDatabase(existingItem = null) {
+  const calls = {
+    indexes: [],
+    itemUpserts: [],
+    insertedItems: 0,
+  };
+  let hasCanonicalItem = Boolean(existingItem);
+  const wishlist = {
+    _id: "wishlist-id",
+    userId: "recipient-id",
+    title: "위시리스트",
+    shareToken: "share-token",
+    visibility: "public",
+  };
+  const collections = {
+    wishlists: {
+      async createIndex(keys, options) {
+        calls.indexes.push({ collection: "wishlists", keys, options });
+      },
+      findOne: async () => wishlist,
+    },
+    products: {
+      findOne: async () => ({ _id: "product-id", status: "active" }),
+    },
+    wishlistItems: {
+      async createIndex(keys, options) {
+        calls.indexes.push({ collection: "wishlistItems", keys, options });
+      },
+      findOne: async () => existingItem,
+      async updateOne(filter, update, options) {
+        calls.itemUpserts.push({ filter, update, options });
+        await Promise.resolve();
+        if (hasCanonicalItem) {
+          return { matchedCount: 1, upsertedCount: 0 };
+        }
+        hasCanonicalItem = true;
+        calls.insertedItems += 1;
+        return { matchedCount: 0, upsertedCount: 1 };
+      },
+    },
+  };
+
+  return {
+    calls,
+    db: {
+      collection(name) {
+        const collection = collections[name];
+        if (!collection) throw new Error(`예상하지 않은 컬렉션: ${name}`);
+        return collection;
+      },
+    },
+  };
+}
+
+test("동시 위시리스트 추가는 unique index와 원자적 upsert로 한 건만 생성한다", async () => {
+  const { db, calls } = createWishlistAddDatabase();
+  const { setWishlistProduct } = loadWishlists(db);
+
+  const results = await Promise.all([
+    setWishlistProduct({ id: "recipient-id" }, "product-id", true),
+    setWishlistProduct({ id: "recipient-id" }, "product-id", true),
+  ]);
+
+  assert.equal(calls.insertedItems, 1);
+  assert.equal(calls.itemUpserts.length, 2);
+  assert.deepEqual(
+    results.map((result) => result.alreadyExists).sort(),
+    [false, true],
+  );
+  assert.deepEqual(plain(calls.itemUpserts[0].filter), {
+    wishlistId: "wishlist-id",
+    productId: "product-id",
+  });
+  assert.deepEqual(plain(calls.itemUpserts[0].options), { upsert: true });
+  assert.deepEqual(
+    plain(calls.indexes),
+    [
+      {
+        collection: "wishlists",
+        keys: { userId: 1 },
+        options: { name: "wishlists_userId_unique", unique: true },
+      },
+      {
+        collection: "wishlistItems",
+        keys: { wishlistId: 1, productId: 1 },
+        options: { name: "wishlistItems_wishlistId_productId_unique", unique: true },
+      },
+    ],
+  );
+});
+
+test("이미 담긴 상품의 add 요청은 상품을 제거하지 않고 중복 상태를 반환한다", async () => {
+  const existingItem = {
+    _id: "item-id",
+    wishlistId: "wishlist-id",
+    productId: "product-id",
+  };
+  const { db, calls } = createWishlistAddDatabase(existingItem);
+  const { setWishlistProduct } = loadWishlists(db);
+
+  const result = await setWishlistProduct(
+    { id: "recipient-id" },
+    "product-id",
+    true,
+  );
+
+  assert.equal(result.added, true);
+  assert.equal(result.alreadyExists, true);
+  assert.equal(calls.itemUpserts.length, 0);
+});
+
 function wishlistFormData() {
   const formData = new FormData();
   formData.set("productId", "product-id");
+  formData.set("intent", "remove");
   formData.set("returnPath", "/wishlist");
   return formData;
 }
@@ -141,10 +252,10 @@ test("Server Action은 차단된 직접 요청을 안내하고 화면을 갱신�
   const actions = loadSource("app/wishlist/actions.js", {
     "next/cache": { revalidatePath: (path) => revalidatedPaths.push(path) },
     "@/lib/constants": { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE: message },
-    "@/lib/session": { requireUser: async () => ({ id: "recipient-id" }) },
+    "@/lib/session": { requireMember: async () => ({ id: "recipient-id" }) },
     "@/lib/utils/format": { sanitizeCallbackPath: (value) => String(value) },
     "@/lib/wishlists": {
-      toggleWishlistProduct: async () => ({ added: false, removalBlocked: true }),
+      setWishlistProduct: async () => ({ added: false, removalBlocked: true }),
     },
   });
 
@@ -154,6 +265,37 @@ test("Server Action은 차단된 직접 요청을 안내하고 화면을 갱신�
   assert.equal(result.removalBlocked, true);
   assert.equal(result.message, message);
   assert.deepEqual(revalidatedPaths, []);
+});
+
+test("중복 add 요청은 제거로 뒤집지 않고 자연스러운 안내를 반환한다", async () => {
+  const revalidatedPaths = [];
+  const calls = [];
+  const actions = loadSource("app/wishlist/actions.js", {
+    "next/cache": { revalidatePath: (path) => revalidatedPaths.push(path) },
+    "@/lib/constants": { GROUP_GIFT_WISHLIST_REMOVAL_MESSAGE: message },
+    "@/lib/session": { requireMember: async () => ({ id: "recipient-id" }) },
+    "@/lib/utils/format": { sanitizeCallbackPath: (value) => String(value) },
+    "@/lib/wishlists": {
+      async setWishlistProduct(currentUser, productId, shouldAdd) {
+        calls.push({ currentUser, productId, shouldAdd });
+        return { added: true, alreadyExists: true, removalBlocked: false };
+      },
+    },
+  });
+  const formData = wishlistFormData();
+  formData.set("intent", "add");
+
+  const result = await actions.toggleWishlistAction(null, formData);
+
+  assert.equal(result.added, true);
+  assert.equal(result.alreadyExists, true);
+  assert.equal(result.message, "이미 위시리스트에 있는 상품입니다.");
+  assert.deepEqual(calls, [{
+    currentUser: { id: "recipient-id" },
+    productId: "product-id",
+    shouldAdd: true,
+  }]);
+  assert.deepEqual(revalidatedPaths, ["/wishlist", "/wishlist"]);
 });
 
 function findElements(tree, predicate) {
@@ -213,6 +355,10 @@ test("진행 중 상품의 해제 시도는 요청 전에 기존 snackbar 안내
   stateCursor = 0;
   const initialTree = WishlistButton(props);
   const form = findElements(initialTree, (node) => node.type === "form")[0];
+  const intent = findElements(
+    initialTree,
+    (node) => node.type === "input" && node.props.name === "intent",
+  )[0];
   let prevented = false;
   form.props.onSubmit({ preventDefault() { prevented = true; } });
 
@@ -224,6 +370,7 @@ test("진행 중 상품의 해제 시도는 요청 전에 기존 snackbar 안내
   )[0];
 
   assert.equal(prevented, true);
+  assert.equal(intent.props.value, "remove");
   assert.equal(feedback.props.role, "status");
   assert.equal(feedback.props.children[0].props.children, message);
 });

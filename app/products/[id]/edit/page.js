@@ -2,14 +2,14 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import ProductForm from "@/app/products/product-form";
 import { getProductById } from "@/lib/products";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export const metadata = { title: "상품 수정" };
 
 export default async function EditProductPage({ params }) {
   await connection();
   const { id } = await params;
-  const user = await requireUser(`/products/${id}/edit`);
+  const user = await requireMember(`/products/${id}/edit`);
   const product = await getProductById(id);
 
   if (!product || product.status === "archived" || product.sellerId !== user.id) {

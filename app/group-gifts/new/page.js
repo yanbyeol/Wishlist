@@ -2,10 +2,12 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import { CreateGroupGiftForm } from "@/app/group-gifts/group-gift-forms";
+import GiftEmailAuthForm from "@/components/gift-email-auth-form";
 import ProductImage from "@/components/product-image";
+import { GROUP_GIFT_DURATION_DAYS } from "@/lib/constants";
 import { findOpenGroupGiftForProduct } from "@/lib/group-gifts";
 import { getProductById } from "@/lib/products";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { findUserById } from "@/lib/users";
 import { formatWon, sanitizeCallbackPath } from "@/lib/utils/format";
 import {
@@ -15,6 +17,12 @@ import {
 import { isProductInWishlist } from "@/lib/wishlists";
 
 export const metadata = { title: "함께 선물하기" };
+
+function getKoreaDateValue(daysToAdd) {
+  const koreaDate = new Date(Date.now() + (9 * 60 * 60 * 1000));
+  koreaDate.setUTCDate(koreaDate.getUTCDate() + daysToAdd);
+  return koreaDate.toISOString().slice(0, 10);
+}
 
 export default async function NewGroupGiftPage({ searchParams }) {
   await connection();
@@ -34,8 +42,8 @@ export default async function NewGroupGiftPage({ searchParams }) {
   }
 
   const callback = `/group-gifts/new?${callbackParams}`;
-  const user = await requireUser(callback);
-  const [product, recipient, isWishlisted] = await Promise.all([
+  const [user, product, recipient, isWishlisted] = await Promise.all([
+    getCurrentUser(),
     getProductById(productId),
     findUserById(recipientId),
     isProductInWishlist(recipientId, productId),
@@ -43,6 +51,21 @@ export default async function NewGroupGiftPage({ searchParams }) {
 
   if (!product || !recipient || !isWishlisted || product.status === "archived") {
     notFound();
+  }
+
+  if (!user) {
+    return (
+      <section className="container narrow-page page-section">
+        <div className="form-card">
+          <div className="page-heading compact-heading">
+            <p className="eyebrow">회원가입 없이 함께 준비해요</p>
+            <h1>{recipient.name}님을 위한 공동선물</h1>
+            <p>이메일 인증 후 공동선물을 만들고 같은 이메일로 다시 관리할 수 있어요.</p>
+          </div>
+          <GiftEmailAuthForm callback={callback} />
+        </div>
+      </section>
+    );
   }
 
   if (recipient.id === user.id) {
@@ -68,6 +91,9 @@ export default async function NewGroupGiftPage({ searchParams }) {
           recipient={recipient}
           from={from}
           returnTo={returnTo}
+          defaultNickname={user.name}
+          minimumEndDate={getKoreaDateValue(1)}
+          defaultEndDate={getKoreaDateValue(GROUP_GIFT_DURATION_DAYS)}
         />
       </div>
       <aside className="order-summary-card">

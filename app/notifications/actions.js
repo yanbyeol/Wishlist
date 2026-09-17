@@ -5,10 +5,10 @@ import {
   deleteReadNotification,
   markNotificationRead,
 } from "@/lib/notifications";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentMember } from "@/lib/session";
 
 export async function readNotificationAction(notificationId) {
-  const user = await getCurrentUser();
+  const user = await getCurrentMember();
 
   if (!user) {
     return { error: "로그인 정보를 다시 확인해 주세요." };
@@ -25,7 +25,7 @@ export async function readNotificationAction(notificationId) {
 }
 
 export async function deleteReadNotificationAction(notificationId) {
-  const user = await getCurrentUser();
+  const user = await getCurrentMember();
 
   if (!user) {
     return { error: "로그인 정보를 다시 확인해 주세요." };

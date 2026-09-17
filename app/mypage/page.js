@@ -2,13 +2,13 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { listAddresses } from "@/lib/addresses";
 import { listReceivedOrders, listSentOrders } from "@/lib/orders";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export const metadata = { title: "마이페이지" };
 
 export default async function MyPage() {
   await connection();
-  const user = await requireUser("/mypage");
+  const user = await requireMember("/mypage");
   const [addresses, receivedOrders, sentOrders] = await Promise.all([
     listAddresses(user.id),
     listReceivedOrders(user.id),

@@ -66,6 +66,7 @@ export default function WishlistButton({
     <>
       <form action={formAction} onSubmit={handleSubmit}>
         <input type="hidden" name="productId" value={productId} />
+        <input type="hidden" name="intent" value={isWishlisted ? "remove" : "add"} />
         <input type="hidden" name="returnPath" value={returnPath} />
         <button
           className={compact ? `heart-button ${isWishlisted ? "active" : ""}` : "button button-secondary"}

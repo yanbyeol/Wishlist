@@ -2,8 +2,10 @@
 
 import { useActionState, useState } from "react";
 import {
+  cancelGroupGiftAction,
   contributeGroupGiftAction,
   createGroupGiftAction,
+  extendGroupGiftAction,
   requestGroupGiftOtpAction,
   retryGroupGiftPaymentAction,
   verifyGroupGiftOtpAction,
@@ -12,7 +14,15 @@ import { formatWon } from "@/lib/utils/format";
 
 const initialState = { message: "" };
 
-export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" }) {
+export function CreateGroupGiftForm({
+  product,
+  recipient,
+  from,
+  returnTo = "",
+  defaultNickname,
+  minimumEndDate,
+  defaultEndDate,
+}) {
   const [state, formAction, pending] = useActionState(createGroupGiftAction, initialState);
 
   return (
@@ -24,7 +34,7 @@ export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" })
       <div className="recipient-summary">
         <span>선물을 받을 친구</span>
         <strong>{recipient.name}</strong>
-        <small>목표 금액 {formatWon(product.price)} · 모집 기간 14일</small>
+        <small>목표 금액 {formatWon(product.price)}</small>
       </div>
       <label className="field">
         <span>함께 선물하기 제목</span>
@@ -37,19 +47,70 @@ export function CreateGroupGiftForm({ product, recipient, from, returnTo = "" })
           required
         />
       </label>
+      <label className="field">
+        <span>모집 종료일</span>
+        <input
+          name="endDate"
+          type="date"
+          min={minimumEndDate}
+          defaultValue={defaultEndDate}
+          required
+        />
+      </label>
+      <label className="field">
+        <span>참여 금액</span>
+        <div className="input-with-suffix">
+          <input
+            name="amount"
+            type="number"
+            min="1"
+            max={product.price}
+            step="1"
+            placeholder="10000"
+            required
+          />
+          <span>원</span>
+        </div>
+        <small>첫 참여가 완료되면 공동선물이 시작됩니다.</small>
+      </label>
+      <label className="field">
+        <span>공개 닉네임</span>
+        <input
+          name="nickname"
+          type="text"
+          minLength="2"
+          maxLength="20"
+          defaultValue={defaultNickname}
+          required
+        />
+      </label>
+      <label className="field">
+        <span>축하 메시지 (선택)</span>
+        <textarea
+          name="message"
+          rows="4"
+          maxLength="300"
+          placeholder="함께 전할 마음을 남겨 주세요."
+        />
+      </label>
       <div className="demo-notice">
         <strong>목업 결제 안내</strong>
-        <span>참여 금액은 실제로 결제되지 않으며 목표 달성 시 선물 준비 완료로 처리됩니다.</span>
+        <span>첫 참여 금액은 실제로 결제되지 않으며 결제가 완료된 뒤 공동선물이 생성됩니다.</span>
       </div>
       <p className="form-message error-message" aria-live="polite">{state?.message}</p>
       <button className="button button-primary button-full" type="submit" disabled={pending}>
-        {pending ? "함께 선물하기를 만드는 중..." : "함께 선물하기 시작"}
+        {pending ? "목업 결제 중..." : "공동선물 시작하기"}
       </button>
     </form>
   );
 }
 
-export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
+export function GuestOtpForm({
+  groupGiftId,
+  returnTo = "",
+  description = "인증 후 이 공동선물에 참여하거나 이전 참여 내역을 확인할 수 있어요.",
+  verifyLabel = "인증하고 참여하기",
+}) {
   const requestAction = requestGroupGiftOtpAction.bind(null, groupGiftId);
   const verifyAction = verifyGroupGiftOtpAction.bind(null, groupGiftId);
   const [requestState, requestFormAction, requestPending] = useActionState(
@@ -65,7 +126,7 @@ export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
     <div className="guest-otp-section">
       <div>
         <h2>이메일로 간편 인증</h2>
-        <p>회원가입 없이 이 함께 선물하기에만 참여할 수 있어요.</p>
+        <p>{description}</p>
       </div>
       <form action={requestFormAction} className="stack-form">
         <label className="field">
@@ -112,7 +173,72 @@ export function GuestOtpForm({ groupGiftId, returnTo = "" }) {
             {verifyState?.message}
           </p>
           <button className="button button-primary button-full" type="submit" disabled={verifyPending}>
-            {verifyPending ? "인증하는 중..." : "인증하고 참여하기"}
+            {verifyPending ? "인증하는 중..." : verifyLabel}
+          </button>
+        </form>
+      )}
+      <p className="muted-copy">간편 인증은 선물 기능에만 사용되며 회원 전용 기능은 이용할 수 없습니다.</p>
+    </div>
+  );
+}
+
+export function GroupGiftManagement({
+  groupGiftId,
+  status,
+  minimumEndDate,
+  hasOtherParticipants = false,
+}) {
+  const extendAction = extendGroupGiftAction.bind(null, groupGiftId);
+  const cancelAction = cancelGroupGiftAction.bind(null, groupGiftId);
+  const [extendState, extendFormAction, extendPending] = useActionState(
+    extendAction,
+    initialState,
+  );
+  const [cancelState, cancelFormAction, cancelPending] = useActionState(
+    cancelAction,
+    initialState,
+  );
+
+  return (
+    <div className="group-gift-management">
+      <div>
+        <h2>함께 선물 관리</h2>
+        <p>개설자만 기간을 연장하거나 진행 중인 모집을 종료할 수 있어요.</p>
+      </div>
+      <form action={extendFormAction} className="stack-form group-gift-extension-form">
+        <label className="field">
+          <span>새 종료일</span>
+          <input name="endDate" type="date" min={minimumEndDate} required />
+        </label>
+        <p
+          className={`form-message ${extendState?.error ? "error-message" : ""}`}
+          aria-live="polite"
+        >
+          {extendState?.message}
+        </p>
+        <button className="button button-secondary button-full" type="submit" disabled={extendPending}>
+          {extendPending ? "기간을 연장하는 중..." : status === "goal_not_met" ? "기간을 연장하고 다시 열기" : "모집 기간 연장"}
+        </button>
+      </form>
+      {status === "funding" && (
+        <form action={cancelFormAction} className="group-gift-cancel-form">
+          {hasOtherParticipants && (
+            <p className="form-message error-message">
+              다른 참여자가 있어 모집을 종료할 수 없습니다.
+            </p>
+          )}
+          <p
+            className={`form-message ${cancelState?.error ? "error-message" : ""}`}
+            aria-live="polite"
+          >
+            {cancelState?.message}
+          </p>
+          <button
+            className="text-button danger-text"
+            type="submit"
+            disabled={cancelPending || hasOtherParticipants}
+          >
+            {cancelPending ? "종료하는 중..." : "함께 선물 모집 종료"}
           </button>
         </form>
       )}

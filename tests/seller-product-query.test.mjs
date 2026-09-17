@@ -43,7 +43,7 @@ function loadQueryActions({ user = { id: firstSellerId }, listProductsBySeller =
   const actions = loadSource("app/seller/products/actions.js", {
     "@/lib/products": { listProductsBySeller },
     "@/lib/seller-product-filter": { getSellerProductStatuses },
-    "@/lib/session": { async requireUser() { calls.authentication += 1; if (!user) throw new Error("LOGIN_REQUIRED"); return user; } },
+    "@/lib/session": { async requireMember() { calls.authentication += 1; if (!user) throw new Error("LOGIN_REQUIRED"); return user; } },
   });
   return { actions, calls };
 }
@@ -142,7 +142,7 @@ function loadProductActions(deleteProductOwned) {
     "@/lib/seller-product-filter": { getSellerProductsReturnPath },
     "@/lib/products": { createProduct: async () => {}, deleteProductOwned, updateProductOwned: async () => {} },
     "@/lib/product-images": { deleteProductImage: async () => {}, uploadProductImage: async () => {} },
-    "@/lib/session": { requireUser: async () => ({ id: firstSellerId }) },
+    "@/lib/session": { requireMember: async () => ({ id: firstSellerId }) },
     "@/app/products/product-image-validation": { hasSelectedProductImage: () => false, validateProductImageFile: async () => ({}) },
     "@/lib/utils/validation": { isValidImageUrl: () => true, parseNonNegativeInteger: () => 0, parsePositiveInteger: () => 1 },
   }, { FormData, process: { env: { NODE_ENV: "test" } }, console });

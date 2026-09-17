@@ -12,7 +12,6 @@ export default function ProductDetailView({
   showActions = true,
 }) {
   const soldOut = product.quantity === 0;
-  const loginPath = `/login?callback=${encodeURIComponent(`/products/${product.id}`)}`;
 
   return (
     <section className="container page-section">
@@ -37,10 +36,10 @@ export default function ProductDetailView({
                 <button className="button button-disabled" disabled>현재 품절된 상품입니다</button>
               ) : (
                 <>
-                  <Link href={user ? `/orders/new?product=${product.id}` : loginPath} className="button button-primary">
+                  <Link href={`/orders/new?product=${product.id}`} className="button button-primary">
                     <GiftIcon size={20} /> 선물하기
                   </Link>
-                  <Link href={user ? `/orders/new?product=${product.id}&mode=self` : loginPath} className="button button-dark">
+                  <Link href={`/orders/new?product=${product.id}&mode=self`} className="button button-dark">
                     나에게 선물하기
                   </Link>
                 </>

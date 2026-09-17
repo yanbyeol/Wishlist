@@ -2,14 +2,14 @@ import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import AuthForm from "@/app/(auth)/auth-form";
 import { GiftIcon } from "@/components/icons";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentMember } from "@/lib/session";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 
 export const metadata = { title: "회원가입" };
 
 export default async function SignupPage({ searchParams }) {
   await connection();
-  const user = await getCurrentUser();
+  const user = await getCurrentMember();
 
   if (user) {
     redirect("/");

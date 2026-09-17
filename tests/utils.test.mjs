@@ -32,6 +32,7 @@ test("주문과 공동선물 상태를 읽기 쉬운 문구로 바꾼다", () =>
   assert.equal(getOrderStatusLabel("unknown"), "처리 중");
   assert.equal(getGroupGiftStatusLabel("completed"), "선물 준비 완료");
   assert.equal(getGroupGiftStatusLabel("funding"), "함께 선물 진행 중");
+  assert.equal(getGroupGiftStatusLabel("goal_not_met"), "목표 미달");
   assert.equal(getGroupGiftStatusLabel("unknown"), "처리 중");
 });
 

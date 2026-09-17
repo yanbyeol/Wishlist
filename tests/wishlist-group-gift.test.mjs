@@ -167,7 +167,7 @@ function loadListPage(mode, loadedWishlist, groupGifts) {
     },
     "@/lib/utils/group-gift-navigation": navigationFunctions,
     "@/lib/session": {
-      async requireUser(callback) {
+      async requireMember(callback) {
         assert.equal(callback, "/wishlist");
         return user;
       },
@@ -316,9 +316,7 @@ test("참여 합계가 0원인 공동선물은 상품 상세와 혼자 선물하
       ? [selfOrderPath]
       : [friendOrderPath, existingGroupPath];
 
-    assert.deepEqual(actionLinks.map((link) => link.props.href), currentUser
-      ? expectedPaths
-      : [`/login?callback=${encodeURIComponent(friendOrderPath)}`, existingGroupPath]);
+    assert.deepEqual(actionLinks.map((link) => link.props.href), expectedPaths);
     assert.equal(calls.userQueries, 1);
   }
 });
@@ -334,16 +332,17 @@ test("공동선물이 없는 공유 상품은 로그인 여부와 수령인에 �
     const tree = await Page({ params: Promise.resolve({ token: "shared-token", id: product.id }) });
     const actionLinks = findElements(tree, (node) => node.type === "Link" && node.props.className.startsWith("button"));
     const expectedPaths = currentUser?.id === user.id ? [selfOrderPath] : [friendOrderPath, newGroupPath];
-    assert.deepEqual(actionLinks.map((link) => link.props.href), currentUser
-      ? expectedPaths
-      : expectedPaths.map((path) => `/login?callback=${encodeURIComponent(path)}`));
+    assert.deepEqual(actionLinks.map((link) => link.props.href), expectedPaths);
     assert.equal(findElements(tree, (node) => node.type === "ShareButton").length, 0);
     if (currentUser?.id !== user.id) assert.equal(actionLinks[1].props.children, "함께 선물하기");
   }
 });
 
-function loadNewGroupGiftPage({ existingGroupGift = null } = {}) {
-  const calls = { callbacks: [] };
+function loadNewGroupGiftPage({
+  existingGroupGift = null,
+  currentUser = { id: "organizer-id", name: "개설자" },
+} = {}) {
+  const calls = { userQueries: 0 };
   const Page = loadSource("app/group-gifts/new/page.js", {
     "next/link": "Link",
     "next/server": { connection: async () => {} },
@@ -352,15 +351,17 @@ function loadNewGroupGiftPage({ existingGroupGift = null } = {}) {
       redirect(path) { throw new Error(`REDIRECT:${path}`); },
     },
     "@/app/group-gifts/group-gift-forms": { CreateGroupGiftForm: "CreateGroupGiftForm" },
+    "@/components/gift-email-auth-form": "GiftEmailAuthForm",
     "@/components/product-image": "ProductImage",
+    "@/lib/constants": { GROUP_GIFT_DURATION_DAYS: 14 },
     "@/lib/group-gifts": {
       findOpenGroupGiftForProduct: async () => existingGroupGift,
     },
     "@/lib/products": { getProductById: async () => product },
     "@/lib/session": {
-      async requireUser(callback) {
-        calls.callbacks.push(callback);
-        return { id: "organizer-id" };
+      async getCurrentUser() {
+        calls.userQueries += 1;
+        return currentUser;
       },
     },
     "@/lib/users": { findUserById: async () => user },
@@ -371,7 +372,7 @@ function loadNewGroupGiftPage({ existingGroupGift = null } = {}) {
   return { Page, calls };
 }
 
-test("공유 상품에서 공동선물을 만드는 동안 로그인과 생성 폼에 복귀 경로를 유지한다", async () => {
+test("공유 상품에서 공동선물을 만드는 동안 생성 폼의 복귀 경로를 유지한다", async () => {
   const { Page, calls } = loadNewGroupGiftPage();
   const tree = await Page({
     searchParams: Promise.resolve({
@@ -383,11 +384,31 @@ test("공유 상품에서 공동선물을 만드는 동안 로그인과 생성 �
   });
   const form = findElements(tree, (node) => node.type === "CreateGroupGiftForm")[0];
 
-  assert.deepEqual(calls.callbacks, [
-    "/group-gifts/new?product=product-id&recipient=recipient-id&from=%2Fshared%2Fshared-token%2Fproducts%2Fproduct-id&returnTo=%2Fshared%2Fshared-token",
-  ]);
+  assert.equal(calls.userQueries, 1);
   assert.equal(form.props.from, "/shared/shared-token/products/product-id");
   assert.equal(form.props.returnTo, "/shared/shared-token");
+  assert.equal(form.props.defaultNickname, "개설자");
+  assert.match(form.props.minimumEndDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(form.props.defaultEndDate, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test("비로그인 공동선물 개설자는 생성 화면 안에서만 이메일 인증한다", async () => {
+  const { Page } = loadNewGroupGiftPage({ currentUser: null });
+  const tree = await Page({
+    searchParams: Promise.resolve({
+      product: "product-id",
+      recipient: "recipient-id",
+      from: "/shared/shared-token/products/product-id",
+      returnTo: "/shared/shared-token",
+    }),
+  });
+  const authForm = findElements(tree, (node) => node.type === "GiftEmailAuthForm")[0];
+
+  assert.equal(
+    authForm.props.callback,
+    "/group-gifts/new?product=product-id&recipient=recipient-id&from=%2Fshared%2Fshared-token%2Fproducts%2Fproduct-id&returnTo=%2Fshared%2Fshared-token",
+  );
+  assert.equal(findElements(tree, (node) => node.type === "CreateGroupGiftForm").length, 0);
 });
 
 test("생성 화면에서 기존 공동선물을 발견해도 공유 위시리스트 복귀 경로를 유지한다", async () => {

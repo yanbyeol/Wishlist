@@ -7,7 +7,7 @@ import ProductImage from "@/components/product-image";
 import ShareButton from "@/components/share-button";
 import StatusBadge from "@/components/status-badge";
 import { getOrderDetails } from "@/lib/orders";
-import { requireUser } from "@/lib/session";
+import { requireMember, requireUser } from "@/lib/session";
 import { formatDate, formatWon, getOrderStatusLabel } from "@/lib/utils/format";
 
 function statusTone(status) {
@@ -35,18 +35,18 @@ export default async function OrderDetailPage({ params, searchParams }) {
   const query = await searchParams;
   const orderView = getOrderView(query.view);
   const callbackPath = orderView ? `/orders/${id}?view=${orderView}` : `/orders/${id}`;
-  const user = await requireUser(callbackPath);
+  const user = orderView === "seller"
+    ? await requireMember(callbackPath)
+    : await requireUser(callbackPath);
   const order = await getOrderDetails(id, user.id, orderView);
 
-  if (
-    !order ||
-    ![order.senderId, order.recipientId, order.sellerId].includes(user.id)
-  ) {
+  if (!order || (order.viewerRole === "seller" && !user.isMember)) {
     notFound();
   }
 
   const isRecipient = user.id === order.recipientId;
   const isSender = user.id === order.senderId;
+  const isParticipant = order.viewerRole === "participant";
   const acceptancePath = order.card?.acceptancePath;
   const groupParticipantCount = order.type === "group"
     ? getGroupParticipantCount(order.contributions)
@@ -82,7 +82,7 @@ export default async function OrderDetailPage({ params, searchParams }) {
         </article>
       )}
 
-      {order.type === "group" && (isSender || isRecipient) && (
+      {order.type === "group" && (isSender || isRecipient || isParticipant) && (
         <GroupGiftMessageCards
           contributions={order.contributions}
           heading={`${groupParticipantCount}명의 마음을 모았어요`}
@@ -140,8 +140,8 @@ export default async function OrderDetailPage({ params, searchParams }) {
       )}
 
       <div className="centered-action">
-        <Link href={isRecipient ? "/mypage/gifts" : "/"} className="button button-secondary">
-          {isRecipient ? "받은 선물 보기" : "상품 더 둘러보기"}
+        <Link href={isRecipient && user.isMember ? "/mypage/gifts" : "/"} className="button button-secondary">
+          {isRecipient && user.isMember ? "받은 선물 보기" : "상품 더 둘러보기"}
         </Link>
       </div>
     </section>

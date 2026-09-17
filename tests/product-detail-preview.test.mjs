@@ -111,7 +111,7 @@ function loadPreviewPage({ loadedProduct = product, user = { id: "seller-id", na
     "next/server": { async connection() { calls.connections += 1; } },
     "@/components/product-detail-view": ProductDetailView,
     "@/lib/products": { async getProductById(id) { calls.productIds.push(id); return loadedProduct; } },
-    "@/lib/session": { async requireUser(path) { calls.callbackPaths.push(path); return user; } },
+    "@/lib/session": { async requireMember(path) { calls.callbackPaths.push(path); return user; } },
   });
   return { Page: page.default, ProductDetailView, calls };
 }

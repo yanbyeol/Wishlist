@@ -13,7 +13,7 @@ import {
   deleteProductImage,
   uploadProductImage,
 } from "@/lib/product-images";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 import {
   hasSelectedProductImage,
   validateProductImageFile,
@@ -69,7 +69,7 @@ function readDevelopmentImageUrl(formData) {
 }
 
 export async function createProductAction(previousState, formData) {
-  const user = await requireUser("/products/new");
+  const user = await requireMember("/products/new");
   const parsed = readProductFields(formData, false);
 
   if (parsed.error) {
@@ -137,7 +137,7 @@ export async function createProductAction(previousState, formData) {
 }
 
 export async function updateProductAction(productId, previousState, formData) {
-  const user = await requireUser(`/products/${productId}/edit`);
+  const user = await requireMember(`/products/${productId}/edit`);
   const parsed = readProductFields(formData, true);
 
   if (parsed.error) {
@@ -169,7 +169,7 @@ export async function updateProductAction(productId, previousState, formData) {
 export async function deleteProductAction(formData) {
   const productId = String(formData.get("productId") ?? "");
   const filterStatuses = formData.getAll("filterStatus");
-  const user = await requireUser("/seller/products");
+  const user = await requireMember("/seller/products");
   const result = await deleteProductOwned(productId, user.id);
 
   if (!result.deleted) {

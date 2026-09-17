@@ -1,9 +1,10 @@
 import { connection } from "next/server";
 import { notFound, redirect } from "next/navigation";
 import OrderForm from "@/app/orders/new/order-form";
+import GiftEmailAuthForm from "@/components/gift-email-auth-form";
 import { findStartedGroupGiftForProduct } from "@/lib/group-gifts";
 import { getProductById } from "@/lib/products";
-import { requireUser } from "@/lib/session";
+import { getCurrentUser } from "@/lib/session";
 import { findUserById } from "@/lib/users";
 import { sanitizeCallbackPath } from "@/lib/utils/format";
 
@@ -22,8 +23,10 @@ export default async function NewOrderPage({ searchParams }) {
   if (recipientId) callbackParams.set("recipient", recipientId);
 
   const callback = `/orders/new?${callbackParams}`;
-  const user = await requireUser(callback);
-  const product = await getProductById(productId);
+  const [user, product] = await Promise.all([
+    getCurrentUser(),
+    getProductById(productId),
+  ]);
 
   if (!product || product.status === "archived") {
     notFound();
@@ -33,6 +36,21 @@ export default async function NewOrderPage({ searchParams }) {
 
   if (recipientId && !requestedRecipient) {
     notFound();
+  }
+
+  if (!user) {
+    return (
+      <section className="container narrow-page page-section">
+        <div className="form-card">
+          <div className="page-heading compact-heading">
+            <p className="eyebrow">회원가입 없이 선물해요</p>
+            <h1>{product.name} 선물하기</h1>
+            <p>이메일 인증을 마치면 축하 메시지와 목업 결제를 이어갈 수 있어요.</p>
+          </div>
+          <GiftEmailAuthForm callback={callback} />
+        </div>
+      </section>
+    );
   }
 
   const mode = requestedMode === "self" || requestedRecipient?.id === user.id ? "self" : "single";

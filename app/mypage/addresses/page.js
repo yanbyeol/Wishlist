@@ -7,7 +7,7 @@ import {
 } from "@/app/mypage/addresses/actions";
 import StatusBadge from "@/components/status-badge";
 import { listAddresses } from "@/lib/addresses";
-import { requireUser } from "@/lib/session";
+import { requireMember } from "@/lib/session";
 
 export const metadata = { title: "배송지 관리" };
 
@@ -21,7 +21,7 @@ const notices = {
 
 export default async function AddressesPage({ searchParams }) {
   await connection();
-  const user = await requireUser("/mypage/addresses");
+  const user = await requireMember("/mypage/addresses");
   const [addresses, query] = await Promise.all([listAddresses(user.id), searchParams]);
   const notice = typeof query.notice === "string" ? notices[query.notice] : "";
   const editId = typeof query.edit === "string" ? query.edit : "";

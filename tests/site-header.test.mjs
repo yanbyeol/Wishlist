@@ -127,3 +127,46 @@ test("모바일 헤더 메뉴는 버튼으로 열리고 메뉴 이동 시 닫힌
     "main-nav",
   );
 });
+
+test("선물 간편 인증 사용자는 회원 메뉴와 판매자 전환 없이 인증 상태만 표시한다", () => {
+  const SiteHeader = loadSource("components/site-header.js", {
+    "next/link": "Link",
+    "next/navigation": { usePathname: () => "/" },
+    react: {
+      useEffect() {},
+      useRef: (initialValue) => ({ current: initialValue }),
+      useState: (initialValue) => [initialValue, () => {}],
+    },
+    "@/app/(auth)/actions": { signOutAction: "signOutAction" },
+    "@/components/icons": { GiftIcon: "GiftIcon" },
+    "@/components/notification-menu": "NotificationMenu",
+    "@/components/site-header-mode": { getModeFromPath: () => "user" },
+    "@/components/status-badge": "StatusBadge",
+  }).default;
+  const tree = SiteHeader({
+    isLoggedIn: false,
+    isGiftAuthenticated: true,
+    giftUserName: "간편 사용자",
+  });
+  const giftSessionControl = findElements(
+    tree,
+    (node) => typeof node.type === "function" && node.type.name === "GiftSessionControl",
+  )[0];
+  const controlTree = giftSessionControl.type(giftSessionControl.props);
+  const links = findElements(controlTree, (node) => node.type === "Link");
+  const linkPaths = links.map((link) => link.props.href);
+
+  assert.equal(linkPaths.includes("/login"), true);
+  assert.equal(findElements(tree, (node) => node.props.href === "/wishlist").length, 0);
+  assert.equal(findElements(tree, (node) => node.props.href === "/mypage").length, 0);
+  assert.equal(findElements(tree, (node) => node.props.href === "/seller").length, 0);
+  assert.equal(findElements(tree, (node) => node.type === "NotificationMenu").length, 0);
+  assert.equal(
+    findElements(controlTree, (node) => node.type === "StatusBadge" && node.props.children === "선물 간편 인증").length,
+    1,
+  );
+  assert.equal(
+    findElements(controlTree, (node) => node.type === "button" && node.props.children === "인증 종료").length,
+    1,
+  );
+});
