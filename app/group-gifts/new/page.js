@@ -60,7 +60,7 @@ export default async function NewGroupGiftPage({ searchParams }) {
           <div className="page-heading compact-heading">
             <p className="eyebrow">회원가입 없이 함께 준비해요</p>
             <h1>{recipient.name}님을 위한 함께 선물</h1>
-            <p>이메일 인증 후 함께 선물을 만들고 같은 이메일로 다시 관리할 수 있어요.</p>
+            <p>이메일 인증 후 함께 선물하기를 시작하고, 같은 이메일로 다시 관리할 수 있어요.</p>
           </div>
           <GiftEmailAuthForm callback={callback} />
         </div>

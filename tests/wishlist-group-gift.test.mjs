@@ -410,7 +410,7 @@ test("비로그인 공동선물 개설자는 생성 화면 안에서만 이메�
   const heading = findElements(tree, (node) => node.type === "h1")[0];
   const description = findElements(
     tree,
-    (node) => node.type === "p" && node.props.children === "이메일 인증 후 함께 선물을 만들고 같은 이메일로 다시 관리할 수 있어요.",
+    (node) => node.type === "p" && node.props.children === "이메일 인증 후 함께 선물하기를 시작하고, 같은 이메일로 다시 관리할 수 있어요.",
   )[0];
 
   assert.equal(
