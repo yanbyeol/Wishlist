@@ -966,6 +966,7 @@ img {
 }
 
 .heart-button.active { color: var(--primary); }
+.heart-button:disabled { cursor: default; }
 
 .own-product-badge {
   position: absolute;

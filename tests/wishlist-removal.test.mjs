@@ -449,8 +449,13 @@ test("페이지 이동 후 위시리스트 요청이 끝나면 제출 직전 스
   form.props.onSubmit({ preventDefault() {} });
 
   pending = true;
-  render();
+  const pendingTree = render();
   for (const effect of effects) effect();
+  const pendingButton = findElements(
+    pendingTree,
+    (node) => node.type === "button" && node.props.type === "submit",
+  )[0];
+  assert.equal(pendingButton.props.disabled, true);
   assert.deepEqual(scrollCalls, []);
 
   browserWindow.scrollY = 0;
@@ -460,4 +465,16 @@ test("페이지 이동 후 위시리스트 요청이 끝나면 제출 직전 스
   for (const effect of effects) effect();
 
   assert.deepEqual(scrollCalls, [{ x: 12, y: 1248 }]);
+});
+
+test("처리 중 위시리스트 하트 버튼은 클릭 금지 커서를 표시하지 않는다", () => {
+  const stylesheet = readFileSync(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    stylesheet,
+    /\.heart-button:disabled\s*{\s*cursor:\s*default;\s*}/,
+  );
 });
