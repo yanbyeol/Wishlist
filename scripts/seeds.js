@@ -111,14 +111,14 @@ async function createSeed() {
       status: "completed", expiresAt: new Date("2026-09-20T00:00:00Z"), orderId: id(93).toHexString() }),
   ];
   const contributions = [
-    [81, 71, 2, "준호", 50000],
-    [82, 71, 3, "서연", 40000],
-    [83, 72, 2, "준호", 70000],
-    [84, 72, 4, "도윤", 50000],
-  ].map(([number, group, sender, nickname, amount]) => document(number, {
+    [81, 71, 2, "준호", 50000, "항상 좋은 일만 가득하길 바라!"],
+    [82, 71, 3, "서연", 40000, "작은 선물이지만 기분 좋은 하루가 되길!"],
+    [83, 72, 2, "준호", 70000, "갖고 싶었던 선물이길~ 😊"],
+    [84, 72, 4, "도윤", 50000, "너를 생각하면서 준비했어. 잘 써줘!"],
+  ].map(([number, group, sender, nickname, amount, message]) => document(number, {
       groupGiftId: id(group).toHexString(), participantType: "member",
       userId: id(sender).toHexString(), guestEmail: null,
-      nickname, amount, message: "새로운 하루도 행복하게 보내!",
+      nickname, amount, message,
       paymentStatus: "paid", paymentProvider: "mock", paymentId: `mock-contribution-${number}`,
     }));
   const orders = [
