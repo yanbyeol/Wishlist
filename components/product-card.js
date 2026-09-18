@@ -23,7 +23,7 @@ export default function ProductCard({
   });
 
   if (groupGiftStatus === "funding" && groupGiftStarted) {
-    groupGiftStatusLabel = "공동선물 진행중";
+    groupGiftStatusLabel = "함께 선물 진행 중";
   } else if (
     groupGiftStarted &&
     ["funded", "processing", "payment_failed"].includes(groupGiftStatus)

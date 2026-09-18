@@ -104,7 +104,7 @@ for (const status of openStatuses) {
     const links = findElements(tree, (node) => node.type === "Link");
 
     assert.equal(badges.length, 1);
-    assert.equal(badges[0].props.children, status === "funding" ? "공동선물 진행중" : "목표 달성");
+    assert.equal(badges[0].props.children, status === "funding" ? "함께 선물 진행 중" : "목표 달성");
     assert.equal(badges[0].props.tone, status === "funding" ? "warm" : "accent");
     assert.equal(findElements(tree, (node) => node.type === "ShareButton").length, 0);
     assert.equal(
@@ -129,7 +129,7 @@ test("모집 종료·완료·알 수 없는 상태와 일반 상품에는 공동
   }
 });
 
-test("참여 합계가 0원인 funding 상품에는 공동선물 진행중 배지를 표시하지 않는다", () => {
+test("참여 합계가 0원인 funding 상품에는 함께 선물 진행 중 배지를 표시하지 않는다", () => {
   const ProductCard = loadProductCard();
   const tree = ProductCard({
     product,
@@ -296,7 +296,7 @@ for (const status of openStatuses) {
   });
 }
 
-test("참여 합계가 0원인 공동선물은 상품 상세와 혼자 선물하기를 유지한다", async () => {
+test("참여 합계가 0원인 공동선물은 상품 상세와 선물하기를 유지한다", async () => {
   const from = encodeURIComponent("/shared/shared-token/products/product-id");
   const friendOrderPath = `/orders/new?product=product-id&recipient=recipient-id&from=${from}`;
   const selfOrderPath = `/orders/new?product=product-id&mode=self&from=${from}`;
@@ -333,6 +333,10 @@ test("공동선물이 없는 공유 상품은 로그인 여부와 수령인에 �
     const actionLinks = findElements(tree, (node) => node.type === "Link" && node.props.className.startsWith("button"));
     const expectedPaths = currentUser?.id === user.id ? [selfOrderPath] : [friendOrderPath, newGroupPath];
     assert.deepEqual(actionLinks.map((link) => link.props.href), expectedPaths);
+    assert.equal(
+      actionLinks[0].props.children.at(-1),
+      currentUser?.id === user.id ? "나에게 선물하기" : "선물하기",
+    );
     assert.equal(findElements(tree, (node) => node.type === "ShareButton").length, 0);
     if (currentUser?.id !== user.id) assert.equal(actionLinks[1].props.children, "함께 선물하기");
   }

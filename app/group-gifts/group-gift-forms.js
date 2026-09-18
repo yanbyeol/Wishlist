@@ -99,7 +99,7 @@ export function CreateGroupGiftForm({
       </div>
       <p className="form-message error-message" aria-live="polite">{state?.message}</p>
       <button className="button button-primary button-full" type="submit" disabled={pending}>
-        {pending ? "목업 결제 중..." : "공동선물 시작하기"}
+        {pending ? "목업 결제 중..." : "함께 선물 시작하기"}
       </button>
     </form>
   );

@@ -777,7 +777,7 @@ test("공동선물 시작 폼은 종료일 다음에 첫 참여 금액을 받고
   assert.ok(fieldNames.indexOf("endDate") < fieldNames.indexOf("amount"));
   assert.equal(endDate.props.required, true);
   assert.equal(endDate.props.defaultValue, "2026-10-01");
-  assert.equal(findText(tree, "공동선물 시작하기"), true);
+  assert.equal(findText(tree, "함께 선물 시작하기"), true);
   assert.equal(findText(tree, "새 종료일"), false);
   assert.equal(findText(tree, "모집 기간 연장"), false);
 });

@@ -65,7 +65,7 @@ export default async function SharedProductPage({ params }) {
             ) : (
               <>
                 <Link href={orderPath} className="button button-primary">
-                  <GiftIcon size={20} /> {isOwner ? "나에게 선물하기" : "혼자 선물하기"}
+                  <GiftIcon size={20} /> {isOwner ? "나에게 선물하기" : "선물하기"}
                 </Link>
                 {!isOwner && (
                   <Link href={groupGiftPath} className="button button-dark">
