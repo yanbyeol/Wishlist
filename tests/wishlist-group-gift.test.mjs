@@ -407,11 +407,18 @@ test("비로그인 공동선물 개설자는 생성 화면 안에서만 이메�
     }),
   });
   const authForm = findElements(tree, (node) => node.type === "GiftEmailAuthForm")[0];
+  const heading = findElements(tree, (node) => node.type === "h1")[0];
+  const description = findElements(
+    tree,
+    (node) => node.type === "p" && node.props.children === "이메일 인증 후 함께 선물을 만들고 같은 이메일로 다시 관리할 수 있어요.",
+  )[0];
 
   assert.equal(
     authForm.props.callback,
     "/group-gifts/new?product=product-id&recipient=recipient-id&from=%2Fshared%2Fshared-token%2Fproducts%2Fproduct-id&returnTo=%2Fshared%2Fshared-token",
   );
+  assert.deepEqual(Array.from(heading.props.children), ["받는 사람", "님을 위한 함께 선물"]);
+  assert.ok(description);
   assert.equal(findElements(tree, (node) => node.type === "CreateGroupGiftForm").length, 0);
 });
 
