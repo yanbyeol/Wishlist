@@ -150,7 +150,12 @@ async function createSeed() {
   });
   const giftCards = orders.map((order, index) => document(101 + index, {
     orderId: order._id.toHexString(), recipientId: order.recipientId, title: "너의 모든 날을 응원해",
-    message: order.type === "group" ? "함께 준비했어. 새로운 시작에 즐거운 음악이 가득하길!" : order.message,
+    message: order.type === "group"
+      ? contributions
+        .filter((entry) => entry.groupGiftId === order.groupGiftId)
+        .map((entry) => entry.message)
+        .join(" · ")
+      : order.message,
     generationProvider: "mock", status: "generated",
     // 실제 서비스에서는 안전한 임의 토큰과 수신자 인증, 만료 검증이 필요하다.
     acceptanceToken: `wishmate-demo-gift-${index + 1}`,
