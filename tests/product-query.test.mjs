@@ -42,7 +42,7 @@ test("공개 상품 조회 액션은 로그인 없이 조건을 재검증하고 
   const result = await queryProductsAction({ category: { $ne: "" }, q: "  머그  ", sort: "invalid", excludeSoldOut: "1", userId: "other-user" });
   assert.equal(result.products[0].id, "public-product");
   assert.equal(result.error, "");
-  assert.deepEqual({ ...queries[0] }, { category: "", query: "머그", sort: "newest", excludeSoldOut: true });
+  assert.deepEqual({ ...queries[0] }, { category: "", query: "머그", sort: "default", excludeSoldOut: true });
 });
 
 test("공개 상품 조회 오류는 민감한 DB 정보 없이 재시도 안내만 반환한다", async () => {
@@ -145,7 +145,7 @@ function createBoard(initialSearch = "", options = {}) {
   const tasks = [];
   const effects = [];
   const history = [];
-  const controls = { category: { value: "" }, q: { value: "" }, sort: { value: "newest" }, excludeSoldOut: { checked: false } };
+  const controls = { category: { value: "" }, q: { value: "" }, sort: { value: "default" }, excludeSoldOut: { checked: false } };
   const window = { location: { pathname: "/", search: initialSearch, hash: "#products" }, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
   window.history = { pushState(data, unused, path) { history.push(path); const url = new URL(path, "http://localhost"); window.location.search = url.search; window.location.hash = url.hash; } };
   let cursor = 0;
@@ -262,7 +262,7 @@ test("검색·정렬·품절 제외를 함께 부분 조회하고 조회 중과 
 test("연속 검색·필터 변경에서 오래된 성공과 오류가 마지막 결과를 덮어쓰지 않는다", async () => {
   const board = createBoard();
   board.submit({ q: "머그" });
-  board.submit({ q: "커피", sort: "popular" });
+  board.submit({ q: "커피", sort: "price_desc" });
   board.submit({ q: "머그", excludeSoldOut: true });
   board.requests[2].resolve({ products: [displayedProduct("최신 결과")], error: "" });
   await board.tasks[2];
@@ -290,9 +290,9 @@ test("뒤로·앞으로 가기는 입력 중인 검색어를 URL 값으로 복�
 });
 
 test("상품 상세에서 돌아와 보드가 다시 마운트되면 URL의 검색·정렬·품절 조건으로 복원한다", async () => {
-  const board = createBoard("?q=머그&sort=popular&excludeSoldOut=1");
+  const board = createBoard("?q=머그&sort=price_desc&excludeSoldOut=1");
   assert.equal(board.requests[0].query.q, "머그");
-  assert.equal(board.requests[0].query.sort, "popular");
+  assert.equal(board.requests[0].query.sort, "price_desc");
   assert.equal(board.requests[0].query.excludeSoldOut, "1");
   board.requests[0].resolve({ products: [displayedProduct("복원된 결과")], error: "" });
   await board.tasks[0]; board.render();
@@ -343,7 +343,7 @@ test("검색·정렬 조건이나 카테고리를 바꾸면 상품 페이지를 
   assert.equal(new URL(board.history.at(-1), "http://localhost").searchParams.get("page"), "2");
   assert.equal(new URL(board.category("리빙").href, "http://localhost").searchParams.has("page"), false);
 
-  board.submit({ q: "머그", sort: "popular" });
+  board.submit({ q: "머그", sort: "price_desc" });
   assert.equal(new URL(board.history.at(-1), "http://localhost").searchParams.has("page"), false);
   assert.deepEqual(board.cards().map(({ product }) => product.id), products.slice(0, 8).map(({ id }) => id));
   assert.equal(board.pageButton("1페이지")["aria-current"], "page");
@@ -401,10 +401,20 @@ test("검색 폼은 정렬·품절 변경을 즉시 제출하고 검색어를 UR
   let submissions = 0;
   const form = { requestSubmit: () => { submissions += 1; } };
   const sort = findElements(first.tree, (node) => node.type === "select")[0];
+  const defaultSort = findElements(
+    first.tree,
+    (node) => node.type === "option" && node.props.value === "default",
+  )[0];
+  const newestSort = findElements(
+    first.tree,
+    (node) => node.type === "option" && node.props.value === "newest",
+  )[0];
   const stock = findElements(first.tree, (node) => node.type === "input" && node.props.name === "excludeSoldOut")[0];
   sort.props.onChange({ currentTarget: { form } });
   stock.props.onChange({ currentTarget: { form } });
   assert.equal(submissions, 2);
+  assert.equal(defaultSort.props.children, "기본");
+  assert.equal(newestSort.props.children, "최신 등록순");
   assert.equal(sort.props.value, "price_asc");
   assert.equal(stock.props.checked, true);
   assert.equal(first.input.props.ref.current.value, "머그");

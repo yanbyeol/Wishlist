@@ -55,35 +55,23 @@ function product(number, { price = 1000, createdAt = new Date("2026-09-15T00:00:
   };
 }
 
-function loadProducts(documents, wishlistCounts = []) {
+function loadProducts(documents) {
   const sortCalls = [];
   const database = {
     collection(name) {
-      if (name === "products") {
-        return {
-          find() {
-            const cursor = {
-              sort(fields) {
-                sortCalls.push({ ...fields });
-                return cursor;
-              },
-              async toArray() {
-                return documents.slice();
-              },
-            };
-            return cursor;
-          },
-        };
-      }
-
-      assert.equal(name, "wishlistItems");
+      assert.equal(name, "products");
       return {
-        aggregate() {
-          return {
+        find() {
+          const cursor = {
+            sort(fields) {
+              sortCalls.push({ ...fields });
+              return cursor;
+            },
             async toArray() {
-              return wishlistCounts;
+              return documents.slice();
             },
           };
+          return cursor;
         },
       };
     },
@@ -97,35 +85,21 @@ function loadProducts(documents, wishlistCounts = []) {
   return { products, sortCalls };
 }
 
-test("상품 DB 정렬은 모든 조건에서 고유 ID를 마지막 동점 기준으로 사용한다", async () => {
+test("기본 정렬은 생성시각과 상품 ID 오름차순으로 시드 작성 순서를 유지한다", async () => {
   const documents = [product(1), product(2), product(3)];
   const { products, sortCalls } = loadProducts(documents);
 
+  await products.listProducts({ sort: "default" });
   await products.listProducts({ sort: "newest" });
   await products.listProducts({ sort: "price_asc" });
   await products.listProducts({ sort: "price_desc" });
   await products.listProductsBySeller("seller-id", ["active"]);
 
   assert.deepEqual(sortCalls, [
+    { createdAt: 1, _id: 1 },
     { createdAt: -1, _id: -1 },
     { price: 1, createdAt: -1, _id: -1 },
     { price: -1, createdAt: -1, _id: -1 },
     { createdAt: -1, _id: -1 },
   ]);
-});
-
-test("인기수와 생성시각이 같으면 상품 ID 내림차순으로 순서를 고정한다", async () => {
-  const documents = [product(1), product(3), product(2)];
-  const wishlistCounts = documents.map(({ _id }) => ({
-    _id: normalizeId(_id),
-    count: 2,
-  }));
-  const { products } = loadProducts(documents, wishlistCounts);
-
-  const results = await products.listProducts({ sort: "popular" });
-
-  assert.deepEqual(
-    Array.from(results, ({ name }) => name),
-    ["상품 3", "상품 2", "상품 1"],
-  );
 });

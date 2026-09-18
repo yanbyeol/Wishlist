@@ -1,4 +1,4 @@
-const allowedSorts = new Set(["newest", "price_asc", "price_desc", "popular"]);
+const allowedSorts = new Set(["default", "newest", "price_asc", "price_desc"]);
 
 function getSingleValue(query, name) {
   if (query instanceof URLSearchParams) {
@@ -17,7 +17,7 @@ export function getProductFilters(query) {
   return {
     category: getSingleValue(query, "category"),
     keyword: getSingleValue(query, "q").trim(),
-    sort: allowedSorts.has(requestedSort) ? requestedSort : "newest",
+    sort: allowedSorts.has(requestedSort) ? requestedSort : "default",
     excludeSoldOut: getSingleValue(query, "excludeSoldOut") === "1",
     page: Number.isSafeInteger(page) ? page : 1,
   };
@@ -28,7 +28,7 @@ export function getProductFilterPath({ category, keyword, sort, excludeSoldOut, 
 
   if (category) params.set("category", category);
   if (keyword) params.set("q", keyword);
-  if (sort !== "newest") params.set("sort", sort);
+  if (sort !== "default") params.set("sort", sort);
   if (excludeSoldOut) params.set("excludeSoldOut", "1");
   if (Number.isSafeInteger(page) && page > 1) params.set("page", String(page));
 

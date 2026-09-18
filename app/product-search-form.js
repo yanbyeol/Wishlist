@@ -41,10 +41,10 @@ export default function ProductSearchForm({
         <label className="product-sort-field">
           <span>정렬</span>
           <select name="sort" value={sort} onChange={submitFilters}>
+            <option value="default">기본</option>
             <option value="newest">최신 등록순</option>
             <option value="price_asc">낮은 가격순</option>
             <option value="price_desc">높은 가격순</option>
-            <option value="popular">인기상품순</option>
           </select>
         </label>
         <label className="checkbox-field product-stock-filter">
